@@ -1,9 +1,11 @@
 
-/* exported init enable disable */
-const { Gio, GLib, Shell, St, Clutter } = imports.gi;
-const Main = imports.ui.main;
-const PopupMenu = imports.ui.popupMenu;
-const Util = imports.misc.util;
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
+import St from 'gi://St';
+import Clutter from 'gi://Clutter';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const BUS_NAME  = 'ca.richyoung.WindowPicker';
 const OBJ_PATH  = '/ca/richyoung/WindowPicker';
@@ -18,7 +20,6 @@ const IFACE_XML = `
 
 let _ownId = 0;
 let _exported = null;
-let _ui = null;
 
 function fuzzyScore(needle, hay) {
   // Simple subsequence score: characters in order = points, contiguous bonus
@@ -56,7 +57,7 @@ class WinpickUI {
     this._entry = new St.Entry({ style_class: 'winpick-entry', can_focus: true, hint_text: 'Filter windows…' });
     this._scroll = new St.ScrollView({ overlay_scrollbars: true });
     this._list = new St.BoxLayout({ vertical: true });
-    this._scroll.add_actor(this._list);
+    this._scroll.add_child(this._list);
     this._actor.add_child(this._entry);
     this._actor.add_child(this._scroll);
 
@@ -72,7 +73,7 @@ class WinpickUI {
     this._filtered = this._windows;
     this._rebuildList();
 
-    Main.uiGroup.add_child(this._actor);
+    Main.layoutManager.addChrome(this._actor);
     this._actor.width = 720;
     this._actor.height = 480;
     this._actor.set_position(
@@ -81,8 +82,8 @@ class WinpickUI {
     this._modal = Main.pushModal(this._actor);
     this._entry.grab_key_focus();
 
-    this._events.push(this._entry.clutter_text.connect('text-changed', () => this._onFilter()));
-    this._events.push(global.stage.connect('key-press-event', (_a, ev) => this._onKey(ev)));
+    this._connect(this._entry.clutter_text, 'text-changed', () => this._onFilter());
+    this._connect(global.stage, 'key-press-event', (_a, ev) => this._onKey(ev));
   }
 
   close() {
@@ -90,10 +91,8 @@ class WinpickUI {
       Main.popModal(this._actor);
       this._modal = null;
     }
-    this._events.forEach(id => {
-      try { global.stage.disconnect(id); } catch (e) {}
-    });
-    this._events = [];
+    this._disconnectAll();
+    Main.layoutManager.removeChrome(this._actor);
     this._actor.destroy();
   }
 
@@ -111,6 +110,16 @@ class WinpickUI {
       this._list.add_child(row);
       if (idx === 0) this._selected = row;
     });
+  }
+
+  _connect(obj, signal, cb) {
+    const id = obj.connect(signal, cb);
+    this._events.push([obj, id]);
+  }
+
+  _disconnectAll() {
+    this._events.forEach(([obj, id]) => { try { obj.disconnect(id); } catch (_e) {} });
+    this._events = [];
   }
 
   _onFilter() {
@@ -154,41 +163,63 @@ class WinpickUI {
   }
 }
 
-function showPopup() {
-  if (_ui) {
-    _ui.close();
-    _ui = null;
+class WindowPickerExtensionLegacy {
+  constructor() {
+    this._ui = null;
+    this._stylesheetPath = null;
   }
-  _ui = new WinpickUI();
-  _ui.open();
+
+  _showPopup() {
+    if (this._ui) {
+      try { this._ui.close(); } catch (_e) {}
+      this._ui = null;
+    }
+    this._ui = new WinpickUI();
+    this._ui.open();
+  }
+
+  enable() {
+    this._stylesheetPath = (this.path ? `${this.path}/stylesheet.css` : (this.dir ? this.dir.get_child('stylesheet.css').get_path() : null));
+    // Load stylesheet
+    if (this._stylesheetPath) Main.themeManager.add_theme_stylesheet(this._stylesheetPath);
+
+    // D-Bus: expose Show()
+    const nodeInfo = Gio.DBusNodeInfo.new_for_xml(IFACE_XML);
+    const ifaceInfo = nodeInfo.interfaces[0];
+    const impl = { Show: () => this._showPopup() };
+    const exported = Gio.DBusExportedObject.wrapJSObject(ifaceInfo, impl);
+    _exported = exported;
+
+    _ownId = Gio.DBus.own_name(
+      Gio.BusType.SESSION,
+      BUS_NAME,
+      Gio.BusNameOwnerFlags.DO_NOT_QUEUE,
+      connection => { _exported.export(connection, OBJ_PATH); },
+      null, null
+    );
+  }
+
+  disable() {
+    if (this._ui) { try { this._ui.close(); } catch (_e) {} this._ui = null; }
+    if (_exported) { _exported.unexport(); _exported = null; }
+    if (_ownId) { Gio.DBus.unown_name(_ownId); _ownId = 0; }
+    try { if (this._stylesheetPath) Main.themeManager.remove_theme_stylesheet(this._stylesheetPath); } catch (_e) {}
+  }
 }
 
-function enable() {
-  // Load stylesheet
-  Main.themeManager.add_theme_stylesheet(
-    imports.misc.extensionUtils.getCurrentExtension().path + '/stylesheet.css'
-  );
+export default class WindowPickerExtension extends Extension {
+  enable() {
+    this._impl = new WindowPickerExtensionLegacy();
+    // Provide path/dir to legacy instance for stylesheet resolution
+    this._impl.path = this.path;
+    this._impl.dir = this.dir;
+    this._impl.enable();
+  }
 
-  // D-Bus: expose Show()
-  const nodeInfo = Gio.DBusNodeInfo.new_for_xml(IFACE_XML);
-  const ifaceInfo = nodeInfo.interfaces[0];
-  const impl = { Show() { showPopup(); } };
-  const exported = Gio.DBusExportedObject.wrapJSObject(ifaceInfo, impl);
-  _exported = exported;
-
-  _ownId = Gio.DBus.own_name(
-    Gio.BusType.SESSION,
-    BUS_NAME,
-    Gio.BusNameOwnerFlags.DO_NOT_QUEUE,
-    connection => { _exported.export(connection, OBJ_PATH); },
-    null, null
-  );
+  disable() {
+    if (this._impl) {
+      this._impl.disable();
+      this._impl = null;
+    }
+  }
 }
-
-function disable() {
-  if (_ui) { try { _ui.close(); } catch (e) {} _ui = null; }
-  if (_exported) { _exported.unexport(); _exported = null; }
-  if (_ownId) { Gio.DBus.unown_name(_ownId); _ownId = 0; }
-}
-
-function init() {}

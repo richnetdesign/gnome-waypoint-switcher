@@ -6,8 +6,20 @@ No unsafe mode, Wayland-safe. It exposes a simple D-Bus method `Show` so you can
 bind it to **Super+R** using GNOME's Keyboard shortcuts.
 
 ## Install
-1. Copy `window-switcher-popup@ai.richyoung.ca` to `~/.local/share/gnome-shell/extensions/`
-2. Log out/in (Wayland) and enable:
+
+Quick install (copies into your user extensions dir and enables):
+
+```
+./install.sh
+```
+
+Notes:
+- On Wayland, log out/in for GNOME Shell to pick up changes.
+- On Xorg, press Alt+F2, type `r`, then Enter to reload.
+
+Manual install:
+1. Copy this folder (`window-switcher-popup@ai.richyoung.ca`) to `~/.local/share/gnome-shell/extensions/`
+2. Enable it:
    ```
    gnome-extensions enable window-switcher-popup@ai.richyoung.ca
    ```
@@ -33,3 +45,11 @@ Open **Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts**:
 - Shows only **icon + window title**.
 - Fuzzy matches by subsequence on title/app name.
 - Enter activates the top result, Esc closes.
+
+## Implementation Notes
+- Wayland-safe: uses GNOME Shell UI and D-Bus, no external windows.
+- D-Bus name `ca.richyoung.WindowPicker` exposes `Show()` to trigger the popup.
+- Follows GNOME extension best practices:
+  - Stylesheet added/removed on enable/disable.
+  - Signals tracked and disconnected safely on close.
+  - UI attached via `Main.layoutManager.addChrome()`.
