@@ -166,7 +166,6 @@ class WinpickUI {
 class WindowPickerExtensionLegacy {
   constructor() {
     this._ui = null;
-    this._stylesheetPath = null;
   }
 
   _showPopup() {
@@ -179,10 +178,6 @@ class WindowPickerExtensionLegacy {
   }
 
   enable() {
-    this._stylesheetPath = (this.path ? `${this.path}/stylesheet.css` : (this.dir ? this.dir.get_child('stylesheet.css').get_path() : null));
-    // Load stylesheet
-    if (this._stylesheetPath) Main.themeManager.add_theme_stylesheet(this._stylesheetPath);
-
     // D-Bus: expose Show()
     const nodeInfo = Gio.DBusNodeInfo.new_for_xml(IFACE_XML);
     const ifaceInfo = nodeInfo.interfaces[0];
@@ -203,7 +198,6 @@ class WindowPickerExtensionLegacy {
     if (this._ui) { try { this._ui.close(); } catch (_e) {} this._ui = null; }
     if (_exported) { _exported.unexport(); _exported = null; }
     if (_ownId) { Gio.DBus.unown_name(_ownId); _ownId = 0; }
-    try { if (this._stylesheetPath) Main.themeManager.remove_theme_stylesheet(this._stylesheetPath); } catch (_e) {}
   }
 }
 
