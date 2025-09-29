@@ -53,3 +53,17 @@ Open **Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts**:
   - Stylesheet added/removed on enable/disable.
   - Signals tracked and disconnected safely on close.
   - UI attached via `Main.layoutManager.addChrome()`.
+
+## Dev Reload on Wayland
+GNOME 45+ caches ES modules for the lifetime of the Shell process, so disabling/enabling won’t reload JS on Wayland. Use a dev UUID to hot‑load changes without logging out:
+
+```
+./dev-install.sh
+```
+
+What it does:
+- Copies the extension with a unique dev UUID (timestamped) and updates `metadata.json`.
+- Disables any enabled sibling variants to avoid D-Bus name conflicts.
+- Enables the new dev variant so the updated JS is imported fresh.
+
+Re-run after changes to create a new dev variant. On Xorg you can still use Alt+F2 → r.
