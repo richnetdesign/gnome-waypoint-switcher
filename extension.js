@@ -4,6 +4,7 @@ import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
+import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -229,9 +230,25 @@ export default class WindowPickerExtension extends Extension {
     this._impl.path = this.path;
     this._impl.dir = this.dir;
     this._impl.enable();
+
+    // Register configurable keybinding via GSettings schema
+    this._settings = this.getSettings();
+    try {
+      Main.wm.addKeybinding(
+        'show',
+        this._settings,
+        Meta.KeyBindingFlags.NONE,
+        Shell.ActionMode.ALL,
+        () => this._impl._showPopup()
+      );
+    } catch (e) {
+      log(`window-switcher-popup: failed to add keybinding: ${e}`);
+    }
   }
 
   disable() {
+    try { Main.wm.removeKeybinding('show'); } catch (_e) {}
+    this._settings = null;
     if (this._impl) {
       this._impl.disable();
       this._impl = null;

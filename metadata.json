@@ -10,6 +10,7 @@
   ],
   "version": 2
   ,
+  "settings-schema": "org.gnome.shell.extensions.window-switcher-popup",
   "stylesheets": [
     "stylesheet.css"
   ]

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.window-switcher-popup" path="/org/gnome/shell/extensions/window-switcher-popup/">
+    <key name="show" type="as">
+      <default>['&lt;Super&gt;Y']</default>
+      <summary>Shortcut(s) to open the Window Picker</summary>
+      <description>
+        Accelerator(s) that trigger the window picker popup.
+        Use syntax like '&lt;Super&gt;Y' or '&lt;Super&gt;&lt;Shift&gt;W'.
+        Multiple accelerators can be specified.
+      </description>
+    </key>
+  </schema>
+</schemalist>

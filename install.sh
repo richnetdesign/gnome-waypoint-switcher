@@ -32,6 +32,16 @@ else
   cp -R "$here"/* "$dest/"
 fi
 
+# Compile GSettings schemas if present
+if [[ -d "$dest/schemas" ]]; then
+  if command -v glib-compile-schemas >/dev/null 2>&1; then
+    echo "Compiling GSettings schemas..."
+    glib-compile-schemas "$dest/schemas" || echo "Warning: failed to compile schemas"
+  else
+    echo "Note: glib-compile-schemas not found; keybindings may not load until compiled by the system."
+  fi
+fi
+
 if command -v gnome-extensions >/dev/null 2>&1; then
   echo "Enabling extension: $uuid"
   if ! gnome-extensions info "$uuid" >/dev/null 2>&1; then
@@ -43,4 +53,3 @@ else
 fi
 
 echo "Done. If on Wayland: log out/in. On Xorg: press Alt+F2, type 'r', press Enter."
-

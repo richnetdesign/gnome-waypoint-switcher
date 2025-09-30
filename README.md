@@ -3,7 +3,7 @@
 
 A GNOME Shell extension that shows a fuzzy window-title picker *inside* GNOME.
 No unsafe mode, Wayland-safe. It exposes a simple D-Bus method `Show` so you can
-bind it to **Super+R** using GNOME's Keyboard shortcuts.
+bind it to a global keyboard shortcut (suggested: **Super+Y**).
 
 ## Install
 
@@ -30,16 +30,30 @@ Trigger the popup:
 gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show
 ```
 
-### Bind to Super+R
+### Built-in Shortcut (default: Super+Y)
+The extension ships with a configurable shortcut using GSettings. Default binding is `Super+Y`.
+
+- Change it via CLI:
+  ```
+  gsettings set org.gnome.shell.extensions.window-switcher-popup show "['<Super>Y']"
+  ```
+- Or use `dconf Editor` at:
+  - `/org/gnome/shell/extensions/window-switcher-popup/show`
+
+You can also create an additional custom shortcut via Settings if you prefer.
+
+### Bind a Custom Shortcut (optional)
 Open **Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts**:
 - Name: Window Picker
 - Command:
   ```
   gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show
   ```
-- Shortcut: press **Super+R**
+- Shortcut: press **Super+Y** (or any preferred free combo)
 
 (We avoid shipping a compiled GSettings schema; using a custom shortcut is simpler and works everywhere.)
+
+See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
 
 ## Behavior
 - Shows only **icon + window title**.
