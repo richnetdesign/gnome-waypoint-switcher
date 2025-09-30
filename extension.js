@@ -105,17 +105,24 @@ class WinpickUI {
     this._connect(this._entry.clutter_text, 'text-changed', () => this._onFilter());
     // Ensure ESC is caught even when the entry has focus
     this._connect(this._entry.clutter_text, 'key-press-event', (_a, ev) => this._onKey(ev));
-    this._connect(global.stage, 'key-press-event', (_a, ev) => this._onKey(ev));
+    this._connect(global.stage, 'captured-event', (_a, ev) => {
+      if (ev.type() !== Clutter.EventType.KEY_PRESS)
+        return Clutter.EVENT_PROPAGATE;
+      return this._onKey(ev);
+    });
   }
 
   close() {
     if (this._modal) {
-      Main.popModal(this._actor);
+      Main.popModal(this._modal);
       this._modal = null;
     }
     this._disconnectAll();
-    Main.layoutManager.removeChrome(this._actor);
-    this._actor.destroy();
+    if (this._actor) {
+      try { Main.layoutManager.removeChrome(this._actor); } catch (_e) {}
+      try { this._actor.destroy(); } catch (_e) {}
+      this._actor = null;
+    }
   }
 
   _rebuildList() {
