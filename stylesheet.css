@@ -3,6 +3,9 @@
   padding: 16px;
   spacing: 8px;
   width: 720px;
+  background-color: rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
 .winpick-entry {
