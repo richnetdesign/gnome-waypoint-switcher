@@ -170,6 +170,7 @@ class WinpickUI {
       const hb = new St.BoxLayout({ vertical: false });
       const icon = w.icon ? w.icon.create_icon_texture(24) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 24 });
       const title = new St.Label({ text: w.title, style_class: 'winpick-title', x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+      row.add_style_class_name(idx % 2 === 0 ? 'even' : 'odd');
       hb.add_child(icon);
       hb.add_child(title);
       row.add_child(hb);

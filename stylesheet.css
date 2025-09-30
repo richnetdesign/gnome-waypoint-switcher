@@ -34,6 +34,14 @@
   padding: 6px 8px;
 }
 
+.winpick-row.even {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.winpick-row.odd {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
 .winpick-row:hover, .winpick-row:selected {
   background-color: rgba(128,128,128,0.2);
 }
