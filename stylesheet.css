@@ -8,9 +8,26 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
+.winpick-header {
+  spacing: 8px;
+}
+
 .winpick-entry {
   padding: 8px 12px;
   font-size: 13pt;
+}
+
+.winpick-close {
+  padding: 8px;
+  border-radius: 999px;
+}
+
+.winpick-close:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.winpick-close:active {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .winpick-row {

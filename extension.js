@@ -82,11 +82,16 @@ function shouldIgnoreWindow(info) {
 class WinpickUI {
   constructor() {
     this._actor = new St.BoxLayout({ vertical: true, style_class: 'winpick-popup' });
-    this._entry = new St.Entry({ style_class: 'winpick-entry', can_focus: true, hint_text: 'Filter windows…' });
+    this._header = new St.BoxLayout({ vertical: false, style_class: 'winpick-header' });
+    this._entry = new St.Entry({ style_class: 'winpick-entry', can_focus: true, hint_text: 'Filter windows…', x_expand: true });
+    this._closeButton = new St.Button({ style_class: 'winpick-close', can_focus: true, reactive: true, accessible_name: 'Close window picker' });
+    this._closeButton.set_child(new St.Icon({ icon_name: 'window-close-symbolic', icon_size: 16 }));
+    this._header.add_child(this._entry);
+    this._header.add_child(this._closeButton);
     this._scroll = new St.ScrollView({ overlay_scrollbars: true });
     this._list = new St.BoxLayout({ vertical: true });
     this._scroll.add_child(this._list);
-    this._actor.add_child(this._entry);
+    this._actor.add_child(this._header);
     this._actor.add_child(this._scroll);
 
     this._events = [];
@@ -137,6 +142,7 @@ class WinpickUI {
         return Clutter.EVENT_PROPAGATE;
       return this._onKey(ev);
     });
+    this._connect(this._closeButton, 'clicked', () => this.close());
   }
 
   close() {
@@ -149,6 +155,11 @@ class WinpickUI {
       try { Main.layoutManager.removeChrome(this._actor); } catch (_e) {}
       try { this._actor.destroy(); } catch (_e) {}
       this._actor = null;
+      this._header = null;
+      this._entry = null;
+      this._closeButton = null;
+      this._scroll = null;
+      this._list = null;
     }
   }
 
