@@ -19,6 +19,19 @@ const IFACE_XML = `
   </interface>
 </node>`;
 
+const IGNORE_APP_IDS = new Set([
+  'org.gnome.Screenshot',
+  'xwaylandvideobridge',
+]);
+
+const IGNORE_WM_CLASSES = new Set([
+  'xwaylandvideobridgerecorder',
+]);
+
+const IGNORE_TITLE_SUBSTRINGS = [
+  'wayland recorder',
+];
+
 let _ownId = 0;
 let _exported = null;
 
@@ -42,14 +55,28 @@ function listWindows() {
   return global.get_window_actors().map(w => {
     const m = w.meta_window;
     const app = tracker.get_window_app(m);
-    return {
+    const info = {
       id: m.get_id(),
       title: String(m.get_title() || ""),
       appId: app ? app.get_id() : "",
       app: app ? app.get_name() : (m.get_wm_class() || ""),
+      wmClass: m.get_wm_class() || "",
       icon: app || null,
     };
-  });
+    return shouldIgnoreWindow(info) ? null : info;
+  }).filter(Boolean);
+}
+
+function shouldIgnoreWindow(info) {
+  const title = info.title.toLowerCase();
+  const appId = info.appId.toLowerCase();
+  const wmClass = info.wmClass.toLowerCase();
+
+  if (IGNORE_APP_IDS.has(appId))
+    return true;
+  if (IGNORE_WM_CLASSES.has(wmClass))
+    return true;
+  return IGNORE_TITLE_SUBSTRINGS.some(substr => title.includes(substr));
 }
 
 class WinpickUI {
