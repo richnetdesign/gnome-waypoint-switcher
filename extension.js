@@ -76,13 +76,34 @@ class WinpickUI {
     Main.layoutManager.addChrome(this._actor);
     this._actor.width = 720;
     this._actor.height = 480;
-    this._actor.set_position(
-      Math.round((global.stage.width - this._actor.width)/2),
-      Math.round(global.stage.height * 0.2));
+    // Position centered on the active monitor (focused window or pointer)
+    const monitors = Main.layoutManager.monitors;
+    const focused = global.display.get_focus_window();
+    let targetMonitor = null;
+    if (focused) {
+      try {
+        const mi = focused.get_monitor();
+        if (mi >= 0 && mi < monitors.length)
+          targetMonitor = monitors[mi];
+      } catch (_e) {}
+    }
+    if (!targetMonitor) {
+      try {
+        const [px, py] = global.get_pointer();
+        targetMonitor = monitors.find(m => px >= m.x && px < m.x + m.width && py >= m.y && py < m.y + m.height) || Main.layoutManager.primaryMonitor;
+      } catch (_e) {
+        targetMonitor = Main.layoutManager.primaryMonitor;
+      }
+    }
+    const mx = targetMonitor.x + Math.round((targetMonitor.width - this._actor.width) / 2);
+    const my = targetMonitor.y + Math.round((targetMonitor.height - this._actor.height) / 2);
+    this._actor.set_position(mx, my);
     this._modal = Main.pushModal(this._actor);
     this._entry.grab_key_focus();
 
     this._connect(this._entry.clutter_text, 'text-changed', () => this._onFilter());
+    // Ensure ESC is caught even when the entry has focus
+    this._connect(this._entry.clutter_text, 'key-press-event', (_a, ev) => this._onKey(ev));
     this._connect(global.stage, 'key-press-event', (_a, ev) => this._onKey(ev));
   }
 
