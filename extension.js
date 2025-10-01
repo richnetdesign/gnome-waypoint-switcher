@@ -20,16 +20,22 @@ const IFACE_XML = `
 </node>`;
 
 const IGNORE_APP_IDS = new Set([
-  'org.gnome.Screenshot',
+  'org.gnome.screenshot',
   'xwaylandvideobridge',
+  'xwaylandvideobridge.desktop',
+  'org.gnome.shell.screencast',
 ]);
 
 const IGNORE_WM_CLASSES = new Set([
   'xwaylandvideobridgerecorder',
+  'wayland to x recording bridge',
+  'wayland-to-x-recording-bridge',
 ]);
 
 const IGNORE_TITLE_SUBSTRINGS = [
   'wayland recorder',
+  'wayland to x recording bridge',
+  'recording bridge',
 ];
 
 let _ownId = 0;
@@ -88,8 +94,9 @@ class WinpickUI {
     this._closeButton.set_child(new St.Icon({ icon_name: 'window-close-symbolic', icon_size: 16 }));
     this._header.add_child(this._entry);
     this._header.add_child(this._closeButton);
-    this._scroll = new St.ScrollView({ overlay_scrollbars: true });
-    this._list = new St.BoxLayout({ vertical: true });
+    this._scroll = new St.ScrollView({ overlay_scrollbars: false, style_class: 'winpick-scroll' });
+    this._scroll.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC);
+    this._list = new St.BoxLayout({ vertical: true, style_class: 'winpick-list' });
     this._scroll.add_child(this._list);
     this._actor.add_child(this._header);
     this._actor.add_child(this._scroll);
@@ -147,7 +154,7 @@ class WinpickUI {
 
   close() {
     if (this._modal) {
-      Main.popModal(this._modal);
+      Main.popModal(this._actor);
       this._modal = null;
     }
     this._disconnectAll();
@@ -168,7 +175,9 @@ class WinpickUI {
     this._filtered.forEach((w, idx) => {
       const row = new St.Button({ style_class: 'winpick-row', reactive: true });
       const hb = new St.BoxLayout({ vertical: false });
-      const icon = w.icon ? w.icon.create_icon_texture(24) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 24 });
+      const iconActor = w.icon ? w.icon.create_icon_texture(24) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 24 });
+      const iconBin = new St.Bin({ style_class: 'winpick-icon' });
+      iconBin.set_child(iconActor);
       const title = new St.Label({
         text: w.title,
         style_class: 'winpick-title',
@@ -177,7 +186,7 @@ class WinpickUI {
         x_align: Clutter.ActorAlign.START,
       });
       row.add_style_class_name(idx % 2 === 0 ? 'even' : 'odd');
-      hb.add_child(icon);
+      hb.add_child(iconBin);
       hb.add_child(title);
       row.add_child(hb);
       row.connect('clicked', () => this._activate(w.id));

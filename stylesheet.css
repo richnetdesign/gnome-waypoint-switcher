@@ -12,6 +12,14 @@
   spacing: 8px;
 }
 
+.winpick-scroll {
+  padding-top: 8px;
+}
+
+.winpick-list {
+  spacing: 4px;
+}
+
 .winpick-entry {
   padding: 8px 12px;
   font-size: 13pt;
@@ -32,6 +40,10 @@
 
 .winpick-row {
   padding: 6px 8px;
+}
+
+.winpick-icon {
+  margin-right: 12px;
 }
 
 .winpick-row.even {
