@@ -24,12 +24,16 @@ const IGNORE_APP_IDS = new Set([
   'xwaylandvideobridge',
   'xwaylandvideobridge.desktop',
   'org.gnome.shell.screencast',
+  'waylandtoxrecordingbridge',
+  'waylandtoxrecordingbridge.desktop',
 ]);
 
 const IGNORE_WM_CLASSES = new Set([
   'xwaylandvideobridgerecorder',
   'wayland to x recording bridge',
   'wayland-to-x-recording-bridge',
+  'waylandtoxrecordingbridge',
+  'waylandtox-recording-bridge',
 ]);
 
 const IGNORE_TITLE_SUBSTRINGS = [
@@ -103,6 +107,8 @@ class WinpickUI {
 
     this._events = [];
     this._modal = null;
+    this._moveOverlay = null;
+    this._moveModal = null;
 
     this._windows = [];
     this._filtered = [];
@@ -157,6 +163,7 @@ class WinpickUI {
       Main.popModal(this._actor);
       this._modal = null;
     }
+    this._closeMoveDialog();
     this._disconnectAll();
     if (this._actor) {
       try { Main.layoutManager.removeChrome(this._actor); } catch (_e) {}
@@ -174,7 +181,7 @@ class WinpickUI {
     this._list.destroy_all_children();
     this._filtered.forEach((w, idx) => {
       const row = new St.Button({ style_class: 'winpick-row', reactive: true });
-      const hb = new St.BoxLayout({ vertical: false });
+      const hb = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-content' });
       const iconActor = w.icon ? w.icon.create_icon_texture(24) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 24 });
       const iconBin = new St.Bin({ style_class: 'winpick-icon' });
       iconBin.set_child(iconActor);
@@ -185,9 +192,19 @@ class WinpickUI {
         y_align: Clutter.ActorAlign.CENTER,
         x_align: Clutter.ActorAlign.START,
       });
+      const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions' });
+      const closeBtn = this._makeInlineButton('window-close-symbolic', 'Close window');
+      closeBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
+      closeBtn.connect('clicked', () => this._closeWindow(w.id));
+      const moveBtn = this._makeInlineButton('go-top-symbolic', 'Move window');
+      moveBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
+      moveBtn.connect('clicked', () => this._openMoveDialog(w));
+      actions.add_child(closeBtn);
+      actions.add_child(moveBtn);
       row.add_style_class_name(idx % 2 === 0 ? 'even' : 'odd');
       hb.add_child(iconBin);
       hb.add_child(title);
+      hb.add_child(actions);
       row.add_child(hb);
       row.connect('clicked', () => this._activate(w.id));
       this._list.add_child(row);
@@ -224,6 +241,10 @@ class WinpickUI {
 
   _onKey(ev) {
     const sym = ev.get_key_symbol();
+    if (sym === Clutter.KEY_Escape && this._moveOverlay) {
+      this._closeMoveDialog();
+      return Clutter.EVENT_STOP;
+    }
     if (sym === Clutter.KEY_Escape) {
       this.close(); return Clutter.EVENT_STOP;
     }
@@ -243,6 +264,140 @@ class WinpickUI {
       mw.activate(global.display.get_current_time_roundtrip());
     }
     this.close();
+  }
+
+  _closeWindow(id) {
+    const mw = this._findMetaWindow(id);
+    if (!mw)
+      return;
+    try {
+      mw.delete(global.display.get_current_time_roundtrip());
+    } catch (_e) {}
+    this._refreshWindows();
+  }
+
+  _openMoveDialog(windowInfo) {
+    this._closeMoveDialog();
+
+    const overlay = new St.Widget({
+      style_class: 'winpick-move-overlay',
+      reactive: true,
+      layout_manager: new Clutter.BinLayout(),
+    });
+    overlay.set_size(global.stage.width, global.stage.height);
+    overlay.set_position(0, 0);
+    const dialog = new St.BoxLayout({ vertical: true, style_class: 'winpick-move-dialog' });
+    dialog.x_align = Clutter.ActorAlign.CENTER;
+    dialog.y_align = Clutter.ActorAlign.CENTER;
+
+    const title = new St.Label({ text: `Move "${windowInfo.title}"`, style_class: 'winpick-move-title' });
+    dialog.add_child(title);
+
+    const monitors = Main.layoutManager.monitors;
+    monitors.forEach((monitor, idx) => {
+      const row = new St.BoxLayout({ vertical: false, style_class: 'winpick-move-row' });
+      const label = new St.Label({ text: `Monitor ${idx + 1}`, style_class: 'winpick-move-monitor' });
+      row.add_child(label);
+
+      const fullBtn = this._makeMoveOption('Maximize', () => this._moveWindow(windowInfo.id, idx, 'full'));
+      const leftBtn = this._makeMoveOption('Left Half', () => this._moveWindow(windowInfo.id, idx, 'left'));
+      const rightBtn = this._makeMoveOption('Right Half', () => this._moveWindow(windowInfo.id, idx, 'right'));
+
+      row.add_child(fullBtn);
+      row.add_child(leftBtn);
+      row.add_child(rightBtn);
+      dialog.add_child(row);
+    });
+
+    const footer = new St.BoxLayout({ vertical: false, style_class: 'winpick-move-footer' });
+    footer.x_expand = true;
+    const cancelBtn = this._makeMoveOption('Cancel', () => this._closeMoveDialog(), true);
+    cancelBtn.x_align = Clutter.ActorAlign.END;
+    cancelBtn.x_expand = true;
+    footer.add_child(cancelBtn);
+    dialog.add_child(footer);
+
+    overlay.add_child(dialog);
+    overlay.connect('button-press-event', (actor, event) => {
+      if (event.get_source() !== overlay)
+        return Clutter.EVENT_PROPAGATE;
+      this._closeMoveDialog();
+      return Clutter.EVENT_STOP;
+    });
+    dialog.connect('button-press-event', () => Clutter.EVENT_STOP);
+
+    Main.uiGroup.add_child(overlay);
+    this._moveOverlay = overlay;
+    this._moveModal = Main.pushModal(overlay);
+  }
+
+  _closeMoveDialog() {
+    if (this._moveModal) {
+      Main.popModal(this._moveOverlay);
+      this._moveModal = null;
+    }
+    if (this._moveOverlay) {
+      try { this._moveOverlay.destroy(); } catch (_e) {}
+      this._moveOverlay = null;
+    }
+  }
+
+  _moveWindow(id, monitorIndex, placement) {
+    const mw = this._findMetaWindow(id);
+    if (!mw)
+      return;
+
+    const monitors = Main.layoutManager.monitors;
+    const monitor = monitors[monitorIndex];
+    if (!monitor)
+      return;
+
+    mw.unmaximize(Meta.MaximizeFlags.BOTH);
+    try { mw.move_to_monitor(monitorIndex); } catch (_e) {}
+
+    if (placement === 'full') {
+      mw.maximize(Meta.MaximizeFlags.BOTH);
+    } else {
+      const halfWidth = Math.round(monitor.width / 2);
+      let x = monitor.x;
+      const y = monitor.y;
+      let width = halfWidth;
+      const height = monitor.height;
+      if (placement === 'right') {
+        x += monitor.width - halfWidth;
+      }
+      try {
+        mw.move_resize_frame(false, x, y, width, height);
+      } catch (_e) {}
+    }
+
+    mw.activate(global.display.get_current_time_roundtrip());
+    this._closeMoveDialog();
+    this._refreshWindows();
+  }
+
+  _refreshWindows() {
+    this._windows = listWindows();
+    this._onFilter();
+  }
+
+  _findMetaWindow(id) {
+    return global.get_window_actors()
+      .map(w => w.meta_window)
+      .find(m => m.get_id() === id);
+  }
+
+  _makeInlineButton(iconName, accessibleName) {
+    const button = new St.Button({ style_class: 'winpick-inline-button', reactive: true, can_focus: true, accessible_name: accessibleName });
+    button.set_child(new St.Icon({ icon_name: iconName, icon_size: 16 }));
+    return button;
+  }
+
+  _makeMoveOption(label, handler, isSecondary = false) {
+    const button = new St.Button({ label, style_class: isSecondary ? 'winpick-move-cancel' : 'winpick-move-option', can_focus: true, reactive: true });
+    button.connect('clicked', handler);
+    button.connect('button-press-event', () => Clutter.EVENT_STOP);
+    return button;
   }
 }
 
