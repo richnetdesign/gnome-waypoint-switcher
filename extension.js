@@ -111,6 +111,7 @@ class WinpickUI {
     this._moveOverlay = null;
     this._moveModalActive = false;
     this._workspaceSignals = [];
+    this._suppressRowActivate = false;
 
     this._windows = [];
     this._filtered = [];
@@ -186,6 +187,7 @@ class WinpickUI {
 
   _rebuildList() {
     this._list.destroy_all_children();
+    this._suppressRowActivate = false;
     this._filtered.forEach((w, idx) => {
       const row = new St.Button({ style_class: 'winpick-row', reactive: true });
       const hb = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-content' });
@@ -203,11 +205,15 @@ class WinpickUI {
       title.clutter_text.set_justify(false);
       const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions' });
       const closeBtn = this._makeInlineButton('window-close-symbolic', 'Close window');
-      closeBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
-      closeBtn.connect('clicked', () => this._closeWindow(w.id));
+      closeBtn.connect('clicked', () => {
+        this._suppressRowActivate = true;
+        this._closeWindow(w.id);
+      });
       const moveBtn = this._makeInlineButton('go-top-symbolic', 'Move window');
-      moveBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
-      moveBtn.connect('clicked', () => this._openMoveDialog(w));
+      moveBtn.connect('clicked', () => {
+        this._suppressRowActivate = true;
+        this._openMoveDialog(w);
+      });
       actions.add_child(closeBtn);
       actions.add_child(moveBtn);
       row.add_style_class_name(idx % 2 === 0 ? 'even' : 'odd');
@@ -215,7 +221,13 @@ class WinpickUI {
       hb.add_child(title);
       hb.add_child(actions);
       row.add_child(hb);
-      row.connect('clicked', () => this._activate(w.id));
+      row.connect('clicked', () => {
+        if (this._suppressRowActivate) {
+          this._suppressRowActivate = false;
+          return;
+        }
+        this._activate(w.id);
+      });
       this._list.add_child(row);
       if (idx === 0) this._selected = row;
     });
@@ -250,6 +262,10 @@ class WinpickUI {
 
   _onKey(ev) {
     const sym = ev.get_key_symbol();
+    if (sym === Clutter.KEY_F5) {
+      this._refreshWindows();
+      return Clutter.EVENT_STOP;
+    }
     if (sym === Clutter.KEY_Escape && this._moveOverlay) {
       this._closeMoveDialog();
       return Clutter.EVENT_STOP;

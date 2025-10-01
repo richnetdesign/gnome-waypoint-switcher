@@ -59,6 +59,7 @@ See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
 - Shows only **icon + window title**.
 - Fuzzy matches by subsequence on title/app name.
 - Enter activates the top result, Esc closes.
+- F5 manually refreshes the list in case you need a quick re-sync.
 
 ## Implementation Notes
 - Wayland-safe: uses GNOME Shell UI and D-Bus, no external windows.
@@ -67,6 +68,31 @@ See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
   - Stylesheet added/removed on enable/disable.
   - Signals tracked and disconnected safely on close.
   - UI attached via `Main.layoutManager.addChrome()`.
+
+## Recover From a Stuck Modal
+In the unlikely event the popup fails to close (e.g. the modal stack gets out of
+sync), you can disable the extension via D-Bus and re-enable it afterward:
+
+```
+gdbus call --session \
+  --dest org.gnome.Shell.Extensions \
+  --object-path /org/gnome/Shell/Extensions \
+  --method org.gnome.Shell.Extensions.DisableExtension \
+  'window-switcher-popup@ai.richyoung.ca'
+```
+
+Once the session is responsive again, re-enable the extension:
+
+```
+gdbus call --session \
+  --dest org.gnome.Shell.Extensions \
+  --object-path /org/gnome/Shell/Extensions \
+  --method org.gnome.Shell.Extensions.EnableExtension \
+  'window-switcher-popup@ai.richyoung.ca'
+```
+
+Both commands are safe to run repeatedly; they simply instruct GNOME Shell to
+toggle the extension state, cleaning up any lingering modal in the process.
 
 ## Dev Reload on Wayland
 GNOME 45+ caches ES modules for the lifetime of the Shell process, so disabling/enabling won’t reload JS on Wayland. Use a dev UUID to hot‑load changes without logging out:
