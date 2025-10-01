@@ -12,6 +12,10 @@
   spacing: 8px;
 }
 
+.winpick-row-content {
+  spacing: 12px;
+}
+
 .winpick-scroll {
   padding-top: 8px;
 }
@@ -42,6 +46,23 @@
   padding: 6px 8px;
 }
 
+.winpick-row-actions {
+  spacing: 6px;
+}
+
+.winpick-inline-button {
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.winpick-inline-button:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.winpick-inline-button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 .winpick-icon {
   margin-right: 12px;
 }
@@ -62,4 +83,63 @@
   padding-left: 12px;
   font-size: 11pt;
   text-align: left;
+}
+
+.winpick-move-overlay {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+.winpick-move-dialog {
+  padding: 20px;
+  spacing: 12px;
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 16px;
+  width: 420px;
+}
+
+.winpick-move-title {
+  font-weight: 600;
+  font-size: 12pt;
+  margin-bottom: 4px;
+}
+
+.winpick-move-row {
+  spacing: 8px;
+}
+
+.winpick-move-monitor {
+  min-width: 120px;
+  text-align: left;
+}
+
+.winpick-move-footer {
+  margin-top: 8px;
+}
+
+.winpick-move-option {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.winpick-move-option:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.winpick-move-option:active {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.winpick-move-cancel {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.winpick-move-cancel:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.winpick-move-cancel:active {
+  background-color: rgba(255, 255, 255, 0.18);
 }
