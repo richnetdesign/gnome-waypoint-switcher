@@ -5,6 +5,7 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
+import Pango from 'gi://Pango';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -91,7 +92,7 @@ function shouldIgnoreWindow(info) {
 
 class WinpickUI {
   constructor() {
-    this._actor = new St.BoxLayout({ vertical: true, style_class: 'winpick-popup' });
+    this._actor = new St.BoxLayout({ vertical: true, style_class: 'winpick-popup', reactive: true, can_focus: true });
     this._header = new St.BoxLayout({ vertical: false, style_class: 'winpick-header' });
     this._entry = new St.Entry({ style_class: 'winpick-entry', can_focus: true, hint_text: 'Filter windows…', x_expand: true });
     this._closeButton = new St.Button({ style_class: 'winpick-close', can_focus: true, reactive: true, accessible_name: 'Close window picker' });
@@ -106,9 +107,10 @@ class WinpickUI {
     this._actor.add_child(this._scroll);
 
     this._events = [];
-    this._modal = null;
+    this._modalActive = false;
     this._moveOverlay = null;
-    this._moveModal = null;
+    this._moveModalActive = false;
+    this._workspaceSignals = [];
 
     this._windows = [];
     this._filtered = [];
@@ -144,7 +146,8 @@ class WinpickUI {
     const mx = targetMonitor.x + Math.round((targetMonitor.width - this._actor.width) / 2);
     const my = targetMonitor.y + Math.round((targetMonitor.height - this._actor.height) / 2);
     this._actor.set_position(mx, my);
-    this._modal = Main.pushModal(this._actor);
+    Main.pushModal(this._actor);
+    this._modalActive = true;
     this._entry.grab_key_focus();
 
     this._connect(this._entry.clutter_text, 'text-changed', () => this._onFilter());
@@ -155,16 +158,20 @@ class WinpickUI {
         return Clutter.EVENT_PROPAGATE;
       return this._onKey(ev);
     });
+    this._connect(this._actor, 'key-press-event', (_a, ev) => this._onKey(ev));
     this._connect(this._closeButton, 'clicked', () => this.close());
+
+    this._setupWorkspaceMonitors();
   }
 
   close() {
-    if (this._modal) {
-      Main.popModal(this._actor);
-      this._modal = null;
-    }
     this._closeMoveDialog();
+    if (this._modalActive) {
+      try { Main.popModal(this._actor); } catch (e) { log(`winpick: pop modal failed: ${e}`); }
+      this._modalActive = false;
+    }
     this._disconnectAll();
+    this._disconnectWorkspaceSignals();
     if (this._actor) {
       try { Main.layoutManager.removeChrome(this._actor); } catch (_e) {}
       try { this._actor.destroy(); } catch (_e) {}
@@ -192,6 +199,8 @@ class WinpickUI {
         y_align: Clutter.ActorAlign.CENTER,
         x_align: Clutter.ActorAlign.START,
       });
+      title.clutter_text.set_line_alignment(Pango.Alignment.LEFT);
+      title.clutter_text.set_justify(false);
       const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions' });
       const closeBtn = this._makeInlineButton('window-close-symbolic', 'Close window');
       closeBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
@@ -328,13 +337,14 @@ class WinpickUI {
 
     Main.uiGroup.add_child(overlay);
     this._moveOverlay = overlay;
-    this._moveModal = Main.pushModal(overlay);
+    Main.pushModal(overlay);
+    this._moveModalActive = true;
   }
 
   _closeMoveDialog() {
-    if (this._moveModal) {
-      Main.popModal(this._moveOverlay);
-      this._moveModal = null;
+    if (this._moveModalActive) {
+      try { Main.popModal(this._moveOverlay); } catch (e) { log(`winpick: pop move modal failed: ${e}`); }
+      this._moveModalActive = false;
     }
     if (this._moveOverlay) {
       try { this._moveOverlay.destroy(); } catch (_e) {}
@@ -398,6 +408,36 @@ class WinpickUI {
     button.connect('clicked', handler);
     button.connect('button-press-event', () => Clutter.EVENT_STOP);
     return button;
+  }
+
+  _setupWorkspaceMonitors() {
+    this._disconnectWorkspaceSignals();
+    const workspaceManager = global.workspace_manager;
+    for (let i = 0; i < workspaceManager.n_workspaces; i++) {
+      const ws = workspaceManager.get_workspace_by_index(i);
+      if (ws)
+        this._watchWorkspace(ws);
+    }
+    this._connect(workspaceManager, 'workspace-added', (_mgr, index) => {
+      const ws = workspaceManager.get_workspace_by_index(index);
+      if (ws)
+        this._watchWorkspace(ws);
+      this._refreshWindows();
+    });
+    this._connect(workspaceManager, 'workspace-removed', () => this._refreshWindows());
+  }
+
+  _watchWorkspace(workspace) {
+    const addedId = workspace.connect('window-added', () => this._refreshWindows());
+    const removedId = workspace.connect('window-removed', () => this._refreshWindows());
+    this._workspaceSignals.push([workspace, addedId], [workspace, removedId]);
+  }
+
+  _disconnectWorkspaceSignals() {
+    this._workspaceSignals.forEach(([obj, id]) => {
+      try { obj.disconnect(id); } catch (_e) {}
+    });
+    this._workspaceSignals = [];
   }
 }
 
