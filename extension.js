@@ -208,7 +208,7 @@ class WinpickUI {
     this._selected = null;
     this._filtered.forEach((w, idx) => {
       const row = new St.Button({ style_class: 'winpick-row', reactive: true });
-      const hb = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-content' });
+      const hb = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-content', x_expand: true });
       const iconActor = w.icon ? w.icon.create_icon_texture(24) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 24 });
       const iconBin = new St.Bin({ style_class: 'winpick-icon' });
       iconBin.set_child(iconActor);
@@ -221,7 +221,7 @@ class WinpickUI {
       });
       title.clutter_text.set_line_alignment(Pango.Alignment.LEFT);
       title.clutter_text.set_justify(false);
-      const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions' });
+      const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions', x_align: Clutter.ActorAlign.END });
       const closeBtn = this._makeInlineButton('window-close-symbolic', 'Close window');
       closeBtn.connect('clicked', () => {
         this._suppressRowActivate = true;
@@ -295,6 +295,22 @@ class WinpickUI {
     }
     if (sym === Clutter.KEY_Down) {
       this._moveSelection(1);
+      return Clutter.EVENT_STOP;
+    }
+    if (sym === Clutter.KEY_Page_Up) {
+      this._moveSelection(Number.NEGATIVE_INFINITY);
+      return Clutter.EVENT_STOP;
+    }
+    if (sym === Clutter.KEY_Page_Down) {
+      this._moveSelection(Number.POSITIVE_INFINITY);
+      return Clutter.EVENT_STOP;
+    }
+    if (sym === Clutter.KEY_Home) {
+      this._moveSelection('home');
+      return Clutter.EVENT_STOP;
+    }
+    if (sym === Clutter.KEY_End) {
+      this._moveSelection('end');
       return Clutter.EVENT_STOP;
     }
     if (sym === Clutter.KEY_Escape && this._moveOverlay) {
@@ -533,7 +549,19 @@ class WinpickUI {
       return;
     if (!this._list)
       return;
-    const next = Math.max(0, Math.min(this._selectionIndex + delta, this._filtered.length - 1));
+    let next;
+    if (delta === 'home') {
+      next = 0;
+    } else if (delta === 'end') {
+      next = this._filtered.length - 1;
+    } else {
+      let step = typeof delta === 'number' ? delta : 0;
+      if (!Number.isFinite(step)) {
+        const direction = step > 0 ? 1 : -1;
+        step = direction * this._estimatePageSize();
+      }
+      next = Math.max(0, Math.min(this._selectionIndex + step, this._filtered.length - 1));
+    }
     if (next === this._selectionIndex)
       return;
     const previousRow = this._list.get_child_at_index(this._selectionIndex);
@@ -555,6 +583,13 @@ class WinpickUI {
       if (typeof this._scroll.scroll_child_to_visible === 'function')
         this._scroll.scroll_child_to_visible(this._selected);
     } catch (_e) {}
+  }
+
+  _estimatePageSize() {
+    if (!this._scroll || this._scroll.height <= 0)
+      return Math.min(5, Math.max(1, this._filtered.length));
+    const itemHeight = 48; // approximate row height incl. spacing
+    return Math.max(1, Math.min(this._filtered.length, Math.round(this._scroll.height / itemHeight)));
   }
 
   _setupWorkspaceMonitors() {
