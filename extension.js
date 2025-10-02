@@ -372,9 +372,12 @@ class WinpickUI {
     const monitors = Main.layoutManager.monitors;
     monitors.forEach((monitor, idx) => {
       const row = new St.BoxLayout({ vertical: true, style_class: 'winpick-move-row' });
-      const label = new St.Label({ text: `Monitor ${idx + 1}`, style_class: 'winpick-move-monitor' });
+      const label = new St.Label({
+        text: `Monitor ${idx + 1}  (${monitor.width}×${monitor.height})`,
+        style_class: 'winpick-move-monitor',
+      });
       row.add_child(label);
-      row.add_child(this._buildMonitorGrid(windowInfo, idx));
+      row.add_child(this._buildMonitorGrid(windowInfo, idx, monitor));
       dialog.add_child(row);
     });
 
@@ -489,11 +492,24 @@ class WinpickUI {
     return button;
   }
 
-  _buildMonitorGrid(windowInfo, monitorIndex) {
+  _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
+    const aspect = monitor.width / Math.max(1, monitor.height);
+    const baseHeight = 140;
+    let width = Math.round(baseHeight * aspect);
+    width = Math.min(380, Math.max(160, width));
+    const height = baseHeight;
+
+    const container = new St.Widget({
+      layout_manager: new Clutter.BinLayout(),
+      style_class: 'winpick-monitor-box',
+    });
+    container.set_size(width, height);
+
     const layout = new Clutter.GridLayout();
-    layout.set_row_spacing(12);
-    layout.set_column_spacing(36);
+    layout.set_row_spacing(Math.round(height / 6));
+    layout.set_column_spacing(Math.round(width / 6));
     const grid = new St.Widget({ layout_manager: layout, style_class: 'winpick-monitor-grid' });
+    grid.set_size(width, height);
 
     const placements = [
       { placement: 'left-top', row: 0, col: 0, label: 'Top Left' },
@@ -521,7 +537,17 @@ class WinpickUI {
       layout.attach(btn, col, row, 1, 1);
     });
 
-    return grid;
+    container.add_child(grid);
+
+    const indexLabel = new St.Label({
+      text: String(monitorIndex + 1),
+      style_class: 'winpick-monitor-index',
+      x_align: Clutter.ActorAlign.CENTER,
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+    container.add_child(indexLabel);
+
+    return container;
   }
 
   _positionMoveDialog(dialog) {
