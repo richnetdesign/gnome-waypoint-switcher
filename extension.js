@@ -239,6 +239,7 @@ class WinpickUI {
       hb.add_child(title);
       hb.add_child(actions);
       row.add_child(hb);
+      row._windowId = w.id;
       row.connect('clicked', () => {
         if (this._suppressRowActivate) {
           this._suppressRowActivate = false;
@@ -247,10 +248,7 @@ class WinpickUI {
         this._activate(w.id);
       });
       this._list.add_child(row);
-      if (idx === this._selectionIndex) {
-        row.add_style_pseudo_class('selected');
-        this._selected = row;
-      }
+      this._updateRowSelectionState(row, idx === this._selectionIndex);
     });
     this._ensureSelectionVisible();
   }
@@ -592,13 +590,14 @@ class WinpickUI {
       return;
     const previousRow = this._list.get_child_at_index(this._selectionIndex);
     if (previousRow)
-      previousRow.remove_style_pseudo_class('selected');
+      this._updateRowSelectionState(previousRow, false);
     this._selectionIndex = next;
     const nextRow = this._list.get_child_at_index(this._selectionIndex);
     if (nextRow) {
-      nextRow.add_style_pseudo_class('selected');
-      this._selected = nextRow;
+      this._updateRowSelectionState(nextRow, true);
       this._ensureSelectionVisible();
+    } else {
+      this._selected = null;
     }
   }
 
@@ -609,6 +608,37 @@ class WinpickUI {
       if (typeof this._scroll.scroll_child_to_visible === 'function')
         this._scroll.scroll_child_to_visible(this._selected);
     } catch (_e) {}
+  }
+
+  _updateRowSelectionState(row, isSelected) {
+    if (!row)
+      return;
+    if (isSelected) {
+      row.add_style_pseudo_class('selected');
+      if (row._windowId && this._isWindowVisible(row._windowId))
+        row.add_style_class_name('winpick-row-selected-visible');
+      else
+        row.remove_style_class_name('winpick-row-selected-visible');
+      this._selected = row;
+    } else {
+      row.remove_style_pseudo_class('selected');
+      row.remove_style_class_name('winpick-row-selected-visible');
+      if (this._selected === row)
+        this._selected = null;
+    }
+  }
+
+  _isWindowVisible(id) {
+    const mw = this._findMetaWindow(id);
+    if (!mw)
+      return false;
+    if (!mw.showing_on_its_workspace())
+      return false;
+    const workspace = mw.get_workspace();
+    const activeWorkspace = global.workspace_manager.get_active_workspace();
+    if (workspace && workspace !== activeWorkspace && !mw.is_on_all_workspaces())
+      return false;
+    return true;
   }
 
   _estimatePageSize() {

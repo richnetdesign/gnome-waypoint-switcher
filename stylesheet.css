@@ -45,6 +45,8 @@
 .winpick-row {
   padding: 6px 8px;
   width: 100%;
+  border-radius: 10px;
+  border: 1px solid transparent;
 }
 
 .winpick-row-actions {
@@ -78,6 +80,15 @@
 
 .winpick-row:hover, .winpick-row:selected {
   background-color: rgba(128,128,128,0.2);
+}
+
+.winpick-row.winpick-row-selected-visible {
+  background-color: rgba(255, 80, 80, 0.45);
+  border: 1px solid rgba(255, 150, 150, 0.75);
+}
+
+.winpick-row.winpick-row-selected-visible .winpick-title {
+  color: #ffeaea;
 }
 
 .winpick-title {
