@@ -118,8 +118,9 @@ class WinpickUI {
 
     this._events = [];
     this._modalActive = false;
-    this._moveOverlay = null;
-    this._moveModalActive = false;
+    this._movePopup = null;
+    this._moveStageSignals = [];
+    this._moveAnchorActor = null;
     this._workspaceSignals = [];
     this._suppressRowActivate = false;
     this._selectionIndex = 0;
@@ -230,7 +231,7 @@ class WinpickUI {
       const moveBtn = this._makeInlineButton('go-top-symbolic', 'Move window');
       moveBtn.connect('clicked', () => {
         this._suppressRowActivate = true;
-        this._openMoveDialog(w);
+        this._openMoveDialog(w, moveBtn);
       });
       actions.add_child(closeBtn);
       actions.add_child(moveBtn);
@@ -311,7 +312,7 @@ class WinpickUI {
       this._moveSelection('end');
       return Clutter.EVENT_STOP;
     }
-    if (sym === Clutter.KEY_Escape && this._moveOverlay) {
+    if (sym === Clutter.KEY_Escape && this._movePopup) {
       this._closeMoveDialog();
       return Clutter.EVENT_STOP;
     }
@@ -345,18 +346,14 @@ class WinpickUI {
     this._refreshWindows();
   }
 
-  _openMoveDialog(windowInfo) {
+  _openMoveDialog(windowInfo, anchorActor) {
     this._closeMoveDialog();
-
-    const overlay = new St.Widget({
-      style_class: 'winpick-move-overlay',
+    this._moveAnchorActor = anchorActor || null;
+    const popup = new St.BoxLayout({
+      vertical: true,
+      style_class: 'winpick-move-popup winpick-move-dialog',
       reactive: true,
-      can_focus: true,
-      layout_manager: new Clutter.BinLayout(),
     });
-    overlay.set_size(global.stage.width, global.stage.height);
-    overlay.set_position(0, 0);
-    const dialog = new St.BoxLayout({ vertical: true, style_class: 'winpick-move-dialog' });
 
     const header = new St.BoxLayout({ vertical: false, style_class: 'winpick-move-header' });
     const title = new St.Label({ text: `Move "${windowInfo.title}"`, style_class: 'winpick-move-title', x_expand: true });
@@ -365,7 +362,7 @@ class WinpickUI {
     closeBtn.connect('clicked', () => this._closeMoveDialog());
     header.add_child(title);
     header.add_child(closeBtn);
-    dialog.add_child(header);
+    popup.add_child(header);
 
     const monitors = Main.layoutManager.monitors;
     monitors.forEach((monitor, idx) => {
@@ -376,7 +373,7 @@ class WinpickUI {
       });
       row.add_child(label);
       row.add_child(this._buildMonitorGrid(windowInfo, idx, monitor));
-      dialog.add_child(row);
+      popup.add_child(row);
     });
 
     const footer = new St.BoxLayout({ vertical: false, style_class: 'winpick-move-footer' });
@@ -385,47 +382,48 @@ class WinpickUI {
     cancelBtn.x_align = Clutter.ActorAlign.END;
     cancelBtn.x_expand = true;
     footer.add_child(cancelBtn);
-    dialog.add_child(footer);
+    popup.add_child(footer);
 
-    overlay.add_child(dialog);
-    overlay.connect('button-press-event', (actor, event) => {
-      if (event.get_source() !== overlay)
+    popup.connect('button-press-event', () => Clutter.EVENT_PROPAGATE);
+
+    Main.uiGroup.add_child(popup);
+    this._movePopup = popup;
+
+    const captureId = global.stage.connect('captured-event', (_actor, event) => {
+      if (!this._movePopup)
         return Clutter.EVENT_PROPAGATE;
-      this._closeMoveDialog();
-      return Clutter.EVENT_STOP;
-    });
-    dialog.connect('button-press-event', () => Clutter.EVENT_STOP);
-    overlay.connect('key-press-event', (_actor, event) => {
-      if (event.get_key_symbol() === Clutter.KEY_Escape) {
+      if (event.type() === Clutter.EventType.BUTTON_PRESS) {
+        let source = event.get_source();
+        while (source) {
+          if (source === this._movePopup || source === this._moveAnchorActor)
+            return Clutter.EVENT_PROPAGATE;
+          source = source.get_parent ? source.get_parent() : null;
+        }
         this._closeMoveDialog();
-        return Clutter.EVENT_STOP;
       }
       return Clutter.EVENT_PROPAGATE;
     });
-
-    Main.uiGroup.add_child(overlay);
-    this._moveOverlay = overlay;
-    Main.pushModal(overlay);
-    this._moveModalActive = true;
-    overlay.grab_key_focus();
+    this._moveStageSignals.push([global.stage, captureId]);
 
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-      if (!this._moveOverlay || !dialog || !dialog.get_parent())
+      if (!this._movePopup || !popup.get_parent())
         return GLib.SOURCE_REMOVE;
-      this._positionMoveDialog(dialog);
+      this._positionMovePopup(popup);
+      popup.grab_key_focus();
       return GLib.SOURCE_REMOVE;
     });
   }
 
   _closeMoveDialog() {
-    if (this._moveModalActive) {
-      try { Main.popModal(this._moveOverlay); } catch (e) { log(`winpick: pop move modal failed: ${e}`); }
-      this._moveModalActive = false;
+    this._moveStageSignals.forEach(([obj, id]) => {
+      try { obj.disconnect(id); } catch (_e) {}
+    });
+    this._moveStageSignals = [];
+    if (this._movePopup) {
+      try { this._movePopup.destroy(); } catch (_e) {}
+      this._movePopup = null;
     }
-    if (this._moveOverlay) {
-      try { this._moveOverlay.destroy(); } catch (_e) {}
-      this._moveOverlay = null;
-    }
+    this._moveAnchorActor = null;
   }
 
   _moveWindow(id, monitorIndex, placement) {
@@ -548,24 +546,37 @@ class WinpickUI {
     return container;
   }
 
-  _positionMoveDialog(dialog) {
-    if (!this._actor)
+  _positionMovePopup(popup) {
+    const anchor = this._moveAnchorActor || this._selected || this._actor;
+    if (!anchor || !popup)
       return;
-    let [anchorX, anchorY] = this._actor.get_transformed_position();
-    const anchorWidth = this._actor.width;
-    const anchorHeight = this._actor.height;
-    const dialogWidth = dialog.width;
-    const dialogHeight = dialog.height;
-
-    let x = Math.round(anchorX + (anchorWidth - dialogWidth) / 2);
-    let y = Math.round(anchorY + (anchorHeight - dialogHeight) / 2);
+    let [ax, ay] = anchor.get_transformed_position();
+    let aw = 0, ah = 0;
+    if (typeof anchor.get_transformed_size === 'function') {
+      [aw, ah] = anchor.get_transformed_size();
+    } else {
+      aw = anchor.width || 0;
+      ah = anchor.height || 0;
+    }
+    const pw = popup.width;
+    const ph = popup.height;
 
     const stageWidth = global.stage.width;
     const stageHeight = global.stage.height;
-    x = Math.max(0, Math.min(x, stageWidth - dialogWidth));
-    y = Math.max(0, Math.min(y, stageHeight - dialogHeight));
 
-    dialog.set_position(x, y);
+    let x = ax + aw + 12;
+    if (x + pw > stageWidth)
+      x = ax - pw - 12;
+    if (x < 6)
+      x = 6;
+
+    let y = ay + Math.round((ah - ph) / 2);
+    if (y + ph > stageHeight)
+      y = stageHeight - ph - 6;
+    if (y < 6)
+      y = 6;
+
+    popup.set_position(Math.round(x), Math.round(y));
   }
 
   _moveSelection(delta) {
@@ -605,8 +616,19 @@ class WinpickUI {
     if (!this._selected || !this._scroll)
       return;
     try {
-      if (typeof this._scroll.scroll_child_to_visible === 'function')
+      if (typeof this._scroll.scroll_child_to_visible === 'function') {
         this._scroll.scroll_child_to_visible(this._selected);
+        return;
+      }
+    } catch (_e) {}
+    try {
+      if (typeof this._selected.get_transformed_position === 'function' && typeof this._scroll.scroll_to_point === 'function') {
+        const [sx, sy] = this._selected.get_transformed_position();
+        const [, scrollY] = this._scroll.get_transformed_position();
+        const offsetY = sy - scrollY;
+        const rowHeight = this._selected.height || 48;
+        this._scroll.scroll_to_point(0, offsetY - Math.round(rowHeight));
+      }
     } catch (_e) {}
   }
 
