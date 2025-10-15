@@ -622,13 +622,23 @@ class WinpickUI {
       }
     } catch (_e) {}
     try {
-      if (typeof this._selected.get_transformed_position === 'function' && typeof this._scroll.scroll_to_point === 'function') {
-        const [sx, sy] = this._selected.get_transformed_position();
-        const [, scrollY] = this._scroll.get_transformed_position();
-        const offsetY = sy - scrollY;
-        const rowHeight = this._selected.height || 48;
-        this._scroll.scroll_to_point(0, offsetY - Math.round(rowHeight));
-      }
+      const vScroll = this._scroll.get_vscroll_bar ? this._scroll.get_vscroll_bar() : null;
+      const adj = vScroll ? vScroll.get_adjustment() : null;
+      if (!adj)
+        return;
+      const box = this._selected.get_allocation_box();
+      const rowTop = box.y1;
+      const rowBottom = box.y2;
+      const current = adj.value;
+      const page = adj.page_size || this._scroll.height || 1;
+      let target = current;
+      if (rowTop < current)
+        target = rowTop;
+      else if (rowBottom > current + page)
+        target = rowBottom - page;
+      target = Math.min(Math.max(target, adj.lower), Math.max(adj.lower, adj.upper - page));
+      if (Math.abs(target - current) > 1)
+        adj.value = target;
     } catch (_e) {}
   }
 
