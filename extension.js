@@ -353,6 +353,7 @@ class WinpickUI {
       vertical: true,
       style_class: 'winpick-move-popup winpick-move-dialog',
       reactive: true,
+      can_focus: true,
     });
 
     const header = new St.BoxLayout({ vertical: false, style_class: 'winpick-move-header' });
@@ -385,25 +386,27 @@ class WinpickUI {
     popup.add_child(footer);
 
     popup.connect('button-press-event', () => Clutter.EVENT_PROPAGATE);
+    popup.connect('key-press-event', (_actor, event) => {
+      if (event.get_key_symbol() === Clutter.KEY_Escape) {
+        this._closeMoveDialog();
+        return Clutter.EVENT_STOP;
+      }
+      return Clutter.EVENT_PROPAGATE;
+    });
 
     Main.uiGroup.add_child(popup);
     this._movePopup = popup;
 
-    const captureId = global.stage.connect('captured-event', (_actor, event) => {
+    const stagePressId = global.stage.connect('button-press-event', (_actor, event) => {
       if (!this._movePopup)
         return Clutter.EVENT_PROPAGATE;
-      if (event.type() === Clutter.EventType.BUTTON_PRESS) {
-        let source = event.get_source();
-        while (source) {
-          if (source === this._movePopup || source === this._moveAnchorActor)
-            return Clutter.EVENT_PROPAGATE;
-          source = source.get_parent ? source.get_parent() : null;
-        }
-        this._closeMoveDialog();
-      }
+      const source = event.get_source();
+      if (this._isActorWithinMovePopup(source))
+        return Clutter.EVENT_PROPAGATE;
+      this._closeMoveDialog();
       return Clutter.EVENT_PROPAGATE;
     });
-    this._moveStageSignals.push([global.stage, captureId]);
+    this._moveStageSignals.push([global.stage, stagePressId]);
 
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
       if (!this._movePopup || !popup.get_parent())
@@ -484,7 +487,6 @@ class WinpickUI {
   _makeMoveOption(label, handler, isSecondary = false) {
     const button = new St.Button({ label, style_class: isSecondary ? 'winpick-move-cancel' : 'winpick-move-option', can_focus: true, reactive: true });
     button.connect('clicked', handler);
-    button.connect('button-press-event', () => Clutter.EVENT_STOP);
     return button;
   }
 
@@ -671,6 +673,18 @@ class WinpickUI {
     if (workspace && workspace !== activeWorkspace && !mw.is_on_all_workspaces())
       return false;
     return true;
+  }
+
+  _isActorWithinMovePopup(actor) {
+    let current = actor;
+    while (current) {
+      if (current === this._movePopup || current === this._moveAnchorActor)
+        return true;
+      if (!current.get_parent)
+        break;
+      current = current.get_parent();
+    }
+    return false;
   }
 
   _estimatePageSize() {
