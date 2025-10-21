@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GNOME_EXT_DIR: window-switcher-popup@ai.richyoung.ca
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,7 +15,7 @@ jobs:
       - name: Install build tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y glib2.0-bin gjs gnome-shell
+          sudo apt-get install -y glib2.0-bin gjs gnome-shell gnome-shell-extension-prefs
 
       - name: Validate GSettings schema
         run: |
@@ -33,8 +31,7 @@ jobs:
           gnome-extensions pack \
             --force \
             --extra-source README.md \
-            --out-dir dist \
-            "$GNOME_EXT_DIR"
+            --out-dir dist
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
