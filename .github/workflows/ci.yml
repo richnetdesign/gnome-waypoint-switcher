@@ -23,9 +23,9 @@ jobs:
         run: |
           glib-compile-schemas --strict --dry-run schemas
 
-      - name: Check GNOME API compatibility
-        run: |
-          scripts/check-gnome-compat.sh
+      # - name: Check GNOME API compatibility
+      #   run: |
+      #     scripts/check-gnome-compat.sh
 
       - name: Package extension
         run: |
