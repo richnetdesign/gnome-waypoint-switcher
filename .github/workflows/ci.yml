@@ -1,0 +1,43 @@
+name: Build Extension
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GNOME_EXT_DIR: window-switcher-popup@ai.richyoung.ca
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y glib2.0-bin gjs gnome-shell
+
+      - name: Validate GSettings schema
+        run: |
+          glib-compile-schemas --strict --dry-run schemas
+
+      - name: Check GNOME API compatibility
+        run: |
+          scripts/check-gnome-compat.sh
+
+      - name: Package extension
+        run: |
+          mkdir -p dist
+          gnome-extensions pack \
+            --force \
+            --extra-source README.md \
+            --out-dir dist \
+            "$GNOME_EXT_DIR"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: window-switcher-popup
+          path: dist/*.zip
