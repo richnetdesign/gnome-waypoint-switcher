@@ -631,16 +631,20 @@ class WinpickUI {
       const box = this._selected.get_allocation_box();
       const rowTop = box.y1;
       const rowBottom = box.y2;
-      const current = adj.value;
-      const page = adj.page_size || this._scroll.height || 1;
+      const current = adj.get_value ? adj.get_value() : adj.value;
+      const page = (adj.get_page_size ? adj.get_page_size() : adj.page_size) || this._scroll.height || 1;
       let target = current;
       if (rowTop < current)
         target = rowTop;
       else if (rowBottom > current + page)
         target = rowBottom - page;
       target = Math.min(Math.max(target, adj.lower), Math.max(adj.lower, adj.upper - page));
-      if (Math.abs(target - current) > 1)
+      if (Math.abs(target - current) > 1) {
+        if (typeof adj.set_value === 'function')
+          adj.set_value(target);
+        else
         adj.value = target;
+      }
     } catch (_e) {}
   }
 
