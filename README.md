@@ -60,6 +60,7 @@ See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
 - Fuzzy matches by subsequence on title/app name.
 - Enter activates the top result, Esc closes.
 - F5 manually refreshes the list in case you need a quick re-sync.
+- Arrow keys move the selection; Enter activates the highlighted window.
 
 ## Implementation Notes
 - Wayland-safe: uses GNOME Shell UI and D-Bus, no external windows.
