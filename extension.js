@@ -121,6 +121,7 @@ class WinpickUI {
     this._movePopup = null;
     this._moveStageSignals = [];
     this._moveAnchorActor = null;
+    this._moveModalActive = false;
     this._workspaceSignals = [];
     this._suppressRowActivate = false;
     this._selectionIndex = 0;
@@ -408,6 +409,9 @@ class WinpickUI {
     });
     this._moveStageSignals.push([global.stage, stagePressId]);
 
+    Main.pushModal(popup);
+    this._moveModalActive = true;
+
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
       if (!this._movePopup || !popup.get_parent())
         return GLib.SOURCE_REMOVE;
@@ -422,6 +426,10 @@ class WinpickUI {
       try { obj.disconnect(id); } catch (_e) {}
     });
     this._moveStageSignals = [];
+    if (this._moveModalActive) {
+      try { Main.popModal(this._movePopup); } catch (_e) {}
+      this._moveModalActive = false;
+    }
     if (this._movePopup) {
       try { this._movePopup.destroy(); } catch (_e) {}
       this._movePopup = null;
