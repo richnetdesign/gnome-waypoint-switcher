@@ -249,6 +249,13 @@ class WinpickUI {
         }
         this._activate(w.id);
       });
+      row.connect('button-press-event', (_actor, event) => {
+        if (event.get_button && event.get_button() === Clutter.BUTTON_SECONDARY) {
+          this._setSelection(idx);
+          return Clutter.EVENT_STOP;
+        }
+        return Clutter.EVENT_PROPAGATE;
+      });
       this._list.add_child(row);
       this._updateRowSelectionState(row, idx === this._selectionIndex);
     });
@@ -607,19 +614,7 @@ class WinpickUI {
       }
       next = Math.max(0, Math.min(this._selectionIndex + step, this._filtered.length - 1));
     }
-    if (next === this._selectionIndex)
-      return;
-    const previousRow = this._list.get_child_at_index(this._selectionIndex);
-    if (previousRow)
-      this._updateRowSelectionState(previousRow, false);
-    this._selectionIndex = next;
-    const nextRow = this._list.get_child_at_index(this._selectionIndex);
-    if (nextRow) {
-      this._updateRowSelectionState(nextRow, true);
-      this._ensureSelectionVisible();
-    } else {
-      this._selected = null;
-    }
+    this._setSelection(next);
   }
 
   _ensureSelectionVisible() {
@@ -707,6 +702,25 @@ class WinpickUI {
       return Math.min(5, Math.max(1, this._filtered.length));
     const itemHeight = 48; // approximate row height incl. spacing
     return Math.max(1, Math.min(this._filtered.length, Math.round(this._scroll.height / itemHeight)));
+  }
+
+  _setSelection(index) {
+    if (this._filtered.length === 0 || !this._list)
+      return;
+    const next = Math.max(0, Math.min(index, this._filtered.length - 1));
+    if (next === this._selectionIndex && this._selected)
+      return;
+    const previousRow = this._list.get_child_at_index(this._selectionIndex);
+    if (previousRow)
+      this._updateRowSelectionState(previousRow, false);
+    this._selectionIndex = next;
+    const nextRow = this._list.get_child_at_index(this._selectionIndex);
+    if (nextRow) {
+      this._updateRowSelectionState(nextRow, true);
+      this._ensureSelectionVisible();
+    } else {
+      this._selected = null;
+    }
   }
 
   _setupWorkspaceMonitors() {
