@@ -627,7 +627,10 @@ class WinpickUI {
       return;
     try {
       if (typeof this._scroll.scroll_child_to_visible === 'function') {
-        this._scroll.scroll_child_to_visible(this._selected);
+
+        let actor = this._scroll.get_clutter_actor();
+        // todo
+        actor.scroll_child_to_visible(this._selected);
         return;
       }
     } catch (_e) {}
