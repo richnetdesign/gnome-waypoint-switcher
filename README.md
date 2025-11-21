@@ -61,6 +61,8 @@ See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
 - Enter activates the top result, Esc closes.
 - F5 manually refreshes the list in case you need a quick re-sync.
 - Arrow keys move the selection; Enter activates the highlighted window.
+- Right-click a row to select it without activating; inline buttons close or move windows.
+- Optional app bar groups windows by app; toggle via `show-app-bar` (GSettings).
 
 ## Implementation Notes
 - Wayland-safe: uses GNOME Shell UI and D-Bus, no external windows.
@@ -108,3 +110,32 @@ What it does:
 - Enables the new dev variant so the updated JS is imported fresh.
 
 Re-run after changes to create a new dev variant. On Xorg you can still use Alt+F2 → r.
+
+## Test in a VM
+For quick GNOME testing, a helper script provisions a UEFI virtual machine and mounts a host share via VirtIO 9p:
+
+```
+ISO_PATH=/path/to/gnome.iso ./scripts/create-gnome-vm.sh
+```
+
+What it does:
+- Creates VM `gnome-extension-dev` with 4 GB RAM / 2 vCPUs.
+- Uses the ISO you provide (GNOME OS Nightly, Fedora Workstation, etc.).
+- Sets up `~/gnome-extension-share` on the host and exposes it as a VirtIO filesystem (`hostshare`) in the guest.
+
+After the VM boots, mount the share inside the guest:
+
+```
+sudo mkdir -p /mnt/host-share
+sudo mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/host-share
+```
+
+From there, copy the extension across:
+
+```
+cp -r /mnt/host-share/window-switcher-popup@ai.richyoung.ca \ 
+      ~/.local/share/gnome-shell/extensions/
+gnome-extensions enable window-switcher-popup@ai.richyoung.ca
+```
+
+Reload GNOME Shell (Alt+F2 → `r` on Xorg, or log out/in on Wayland) after copying. Update the ISO path or VM resources in the script if you need a different environment.
