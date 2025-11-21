@@ -135,6 +135,10 @@ class WinpickUI {
     this._suppressRowActivate = false;
     this._selectionIndex = 0;
     this._groupFilter = null;
+    this._highlightWindow = null;
+    this._highlightActor = null;
+    this._highlightSignals = [];
+    this._highlightTimeout = 0;
 
     this._windows = [];
     this._filtered = [];
@@ -763,6 +767,21 @@ class WinpickUI {
       this._groupFilter = appId;
     this._selectionIndex = 0;
     this._onFilter();
+  }
+
+  _applyWindowHighlight(_id) {
+    // Highlight temporarily disabled; keep API to avoid runtime errors
+  }
+
+  _clearWindowHighlight() {
+    this._highlightWindow = null;
+    this._highlightActor = null;
+    this._highlightSignals = [];
+    this._highlightTimeout = 0;
+  }
+
+  _syncWindowHighlight() {
+    // no-op placeholder
   }
 
   _applyGroupFilter(list) {
