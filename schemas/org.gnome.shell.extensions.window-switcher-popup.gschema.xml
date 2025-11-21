@@ -10,5 +10,10 @@
         Multiple accelerators can be specified.
       </description>
     </key>
+    <key name="show-app-bar" type="b">
+      <default>true</default>
+      <summary>Show application filter bar</summary>
+      <description>When enabled, displays an app icon bar grouped by window count to filter the list.</description>
+    </key>
   </schema>
 </schemalist>

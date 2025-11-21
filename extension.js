@@ -101,7 +101,10 @@ function shouldIgnoreWindow(info) {
 }
 
 class WinpickUI {
-  constructor() {
+  constructor(options = {}) {
+    this._showAppBar = options.showAppBar !== false;
+    this._groupFilter = null;
+
     this._actor = new St.BoxLayout({ vertical: true, style_class: 'winpick-popup', reactive: true, can_focus: true });
     this._header = new St.BoxLayout({ vertical: false, style_class: 'winpick-header' });
     this._entry = new St.Entry({ style_class: 'winpick-entry', can_focus: true, hint_text: 'Filter windows…', x_expand: true });
@@ -114,6 +117,12 @@ class WinpickUI {
     this._list = new St.BoxLayout({ vertical: true, style_class: 'winpick-list' });
     this._scroll.add_child(this._list);
     this._actor.add_child(this._header);
+    if (this._showAppBar) {
+      this._appBar = new St.BoxLayout({ vertical: false, style_class: 'winpick-appbar', x_expand: true });
+      this._actor.add_child(this._appBar);
+    } else {
+      this._appBar = null;
+    }
     this._actor.add_child(this._scroll);
 
     this._events = [];
@@ -125,6 +134,7 @@ class WinpickUI {
     this._workspaceSignals = [];
     this._suppressRowActivate = false;
     this._selectionIndex = 0;
+    this._groupFilter = null;
 
     this._windows = [];
     this._filtered = [];
@@ -133,8 +143,10 @@ class WinpickUI {
   open() {
     this._windows = listWindows();
     this._filtered = this._windows;
+    this._groupFilter = null;
     this._selectionIndex = 0;
     this._rebuildList();
+    this._rebuildAppBar();
 
     Main.layoutManager.addChrome(this._actor);
     this._actor.width = 720;
@@ -276,9 +288,9 @@ class WinpickUI {
     const q = this._entry.get_text().trim();
     this._selectionIndex = 0;
     if (!q) {
-      this._filtered = this._windows;
+      this._filtered = this._applyGroupFilter(this._windows);
     } else {
-      this._filtered = this._windows
+      this._filtered = this._applyGroupFilter(this._windows)
         .map(w => ({ w, s: Math.max(
           fuzzyScore(q, w.title),
           fuzzyScore(q, w.app),
@@ -288,6 +300,7 @@ class WinpickUI {
         .map(o => o.w);
     }
     this._rebuildList();
+    this._rebuildAppBar();
   }
 
   _onKey(ev) {
@@ -416,6 +429,18 @@ class WinpickUI {
     });
     this._moveStageSignals.push([global.stage, stagePressId]);
 
+    const stageClickId = global.stage.connect('button-press-event', (_actor, event) => {
+      if (!this._moveModalActive && !this._movePopup)
+        return Clutter.EVENT_PROPAGATE;
+      // Always close on outside click
+      const source = event.get_source();
+      if (this._isActorWithinMovePopup(source))
+        return Clutter.EVENT_PROPAGATE;
+      this.close();
+      return Clutter.EVENT_PROPAGATE;
+    });
+    this._moveStageSignals.push([global.stage, stageClickId]);
+
     Main.pushModal(popup);
     this._moveModalActive = true;
 
@@ -506,11 +531,16 @@ class WinpickUI {
   }
 
   _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
-    const aspect = monitor.width / Math.max(1, monitor.height);
     const baseHeight = 140;
+    const aspect = monitor.width / Math.max(1, monitor.height);
     let width = Math.round(baseHeight * aspect);
-    width = Math.min(380, Math.max(160, width));
-    const height = baseHeight;
+    width = Math.min(420, Math.max(120, width));
+    let height = baseHeight;
+    if (monitor.height > monitor.width) {
+      // portrait: base on width instead
+      const portraitHeight = Math.round(width / Math.max(0.1, aspect));
+      height = Math.max(120, Math.min(420, portraitHeight));
+    }
 
     const container = new St.Widget({
       layout_manager: new Clutter.BinLayout(),
@@ -556,8 +586,9 @@ class WinpickUI {
       text: String(monitorIndex + 1),
       style_class: 'winpick-monitor-index',
       x_align: Clutter.ActorAlign.CENTER,
-      y_align: Clutter.ActorAlign.CENTER,
+      y_align: Clutter.ActorAlign.START,
     });
+    indexLabel.set_position(8, 6);
     container.add_child(indexLabel);
 
     return container;
@@ -630,25 +661,27 @@ class WinpickUI {
       }
     } catch (_e) {}
     try {
-      const vScroll = this._scroll.get_vscroll_bar ? this._scroll.get_vscroll_bar() : null;
-      const adj = vScroll ? vScroll.get_adjustment() : null;
-      if (!adj)
-        return;
-      const box = this._selected.get_allocation_box();
-      const rowTop = box.y1;
-      const rowBottom = box.y2;
-      const current = adj.get_value ? adj.get_value() : adj.value;
-      const page = (adj.get_page_size ? adj.get_page_size() : adj.page_size) || this._scroll.height || 1;
-      let target = current;
-      if (rowTop < current)
-        target = rowTop;
-      else if (rowBottom > current + page)
-        target = rowBottom - page;
-      target = Math.min(Math.max(target, adj.lower), Math.max(adj.lower, adj.upper - page));
-      if (Math.abs(target - current) > 1) {
-        if (typeof adj.set_value === 'function')
-          adj.set_value(target);
-        else
+    const vScroll = this._scroll.get_vscroll_bar ? this._scroll.get_vscroll_bar() : null;
+    const adj = vScroll ? vScroll.get_adjustment() : null;
+    if (!adj)
+      return;
+    const box = this._selected.get_allocation_box();
+    const rowTop = box.y1;
+    const rowBottom = box.y2;
+    const lower = adj.get_lower ? adj.get_lower() : (adj.lower || 0);
+    const upper = adj.get_upper ? adj.get_upper() : (adj.upper || (this._list ? this._list.height : 0));
+    const current = adj.get_value ? adj.get_value() : adj.value;
+    const page = (adj.get_page_size ? adj.get_page_size() : adj.page_size) || this._scroll.height || 1;
+    let target = current;
+    if (rowTop < current)
+      target = rowTop;
+    else if (rowBottom > current + page)
+      target = rowBottom - page;
+    target = Math.min(Math.max(target, lower), Math.max(lower, upper - page));
+    if (Math.abs(target - current) > 1) {
+      if (typeof adj.set_value === 'function')
+        adj.set_value(target);
+      else
         adj.value = target;
       }
     } catch (_e) {}
@@ -723,6 +756,54 @@ class WinpickUI {
     }
   }
 
+  _toggleFilter(appId) {
+    if (this._groupFilter === appId)
+      this._groupFilter = null;
+    else
+      this._groupFilter = appId;
+    this._selectionIndex = 0;
+    this._onFilter();
+  }
+
+  _applyGroupFilter(list) {
+    if (!this._groupFilter)
+      return list;
+    return list.filter(w => w.appId === this._groupFilter);
+  }
+
+  _rebuildAppBar() {
+    if (!this._showAppBar || !this._appBar)
+      return;
+    this._appBar.destroy_all_children();
+    const counts = new Map();
+    this._windows.forEach(w => {
+      const key = w.appId || w.app || 'unknown';
+      const entry = counts.get(key) || { count: 0, icon: w.icon, app: w.app || key, appId: w.appId };
+      entry.count += 1;
+      counts.set(key, entry);
+    });
+    const items = Array.from(counts.entries())
+      .map(([appId, data]) => ({ appId, ...data }))
+      .sort((a, b) => b.count - a.count || a.app.localeCompare(b.app));
+    items.forEach(item => {
+      const btn = new St.Button({ style_class: 'winpick-appbutton', reactive: true, can_focus: true });
+      const inner = new St.BoxLayout({ vertical: false, style_class: 'winpick-appbutton-inner' });
+      const icon = item.icon ? item.icon.create_icon_texture(20) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 20 });
+      const badge = new St.Label({ text: String(item.count), style_class: 'winpick-appbutton-badge' });
+      inner.add_child(icon);
+      inner.add_child(badge);
+      btn.set_child(inner);
+      if (this._groupFilter === item.appId)
+        btn.add_style_pseudo_class('selected');
+      btn.connect('clicked', () => this._toggleFilter(item.appId));
+      btn.set_tooltip_text(item.app || item.appId || '');
+      this._appBar.add_child(btn);
+    });
+    const clearBtn = new St.Button({ label: 'Clear', style_class: 'winpick-appbutton-clear', reactive: true, can_focus: true });
+    clearBtn.connect('clicked', () => this._toggleFilter(null));
+    this._appBar.add_child(clearBtn);
+  }
+
   _setupWorkspaceMonitors() {
     this._disconnectWorkspaceSignals();
     const workspaceManager = global.workspace_manager;
@@ -755,8 +836,9 @@ class WinpickUI {
 }
 
 class WindowPickerExtensionLegacy {
-  constructor() {
+  constructor(settings = null) {
     this._ui = null;
+    this._settings = settings;
   }
 
   _showPopup() {
@@ -764,7 +846,9 @@ class WindowPickerExtensionLegacy {
       try { this._ui.close(); } catch (_e) {}
       this._ui = null;
     }
-    this._ui = new WinpickUI();
+    const showAppBar = this._settings ? 
+      this._settings.get_boolean('show-app-bar') : true;
+    this._ui = new WinpickUI({ showAppBar });
     this._ui.open();
   }
 
@@ -794,14 +878,14 @@ class WindowPickerExtensionLegacy {
 
 export default class WindowPickerExtension extends Extension {
   enable() {
-    this._impl = new WindowPickerExtensionLegacy();
+    this._settings = this.getSettings();
+    this._impl = new WindowPickerExtensionLegacy(this._settings);
     // Provide path/dir to legacy instance for stylesheet resolution
     this._impl.path = this.path;
     this._impl.dir = this.dir;
     this._impl.enable();
 
     // Register configurable keybinding via GSettings schema
-    this._settings = this.getSettings();
     try {
       Main.wm.addKeybinding(
         'show',
