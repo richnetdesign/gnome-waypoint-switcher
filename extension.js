@@ -821,7 +821,7 @@ class WinpickUI {
       if (this._groupFilter === item.appId)
         btn.add_style_pseudo_class('selected');
       btn.connect('clicked', () => this._toggleFilter(item.appId));
-      btn.set_tooltip_text(item.app || item.appId || '');
+      // btn.set_tooltip_text(item.app || item.appId || ''); // Removed due to missing method
       this._appBar.add_child(btn);
     });
     const clearBtn = new St.Button({ label: 'Clear', style_class: 'winpick-appbutton-clear', reactive: true, can_focus: true });
