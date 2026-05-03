@@ -103,6 +103,7 @@ function shouldIgnoreWindow(info) {
 class WinpickUI {
   constructor(options = {}) {
     this._showAppBar = options.showAppBar !== false;
+    this._enableMovePopover = options.enableMovePopover !== false;
     this._groupFilter = null;
 
     this._actor = new St.BoxLayout({ vertical: true, style_class: 'winpick-popup', reactive: true, can_focus: true });
@@ -245,13 +246,15 @@ class WinpickUI {
         this._suppressRowActivate = true;
         this._closeWindow(w.id);
       });
-      const moveBtn = this._makeInlineButton('go-top-symbolic', 'Move window');
-      moveBtn.connect('clicked', () => {
-        this._suppressRowActivate = true;
-        this._openMoveDialog(w, moveBtn);
-      });
       actions.add_child(closeBtn);
-      actions.add_child(moveBtn);
+      if (this._enableMovePopover) {
+        const moveBtn = this._makeInlineButton('go-top-symbolic', 'Move window');
+        moveBtn.connect('clicked', () => {
+          this._suppressRowActivate = true;
+          this._openMoveDialog(w, moveBtn);
+        });
+        actions.add_child(moveBtn);
+      }
       row.add_style_class_name(idx % 2 === 0 ? 'even' : 'odd');
       hb.add_child(iconBin);
       hb.add_child(title);
@@ -372,6 +375,9 @@ class WinpickUI {
   }
 
   _openMoveDialog(windowInfo, anchorActor) {
+    if (!this._enableMovePopover)
+      return;
+
     this._closeMoveDialog();
     this._moveAnchorActor = anchorActor || null;
     const popup = new St.BoxLayout({
@@ -865,9 +871,11 @@ class WindowPickerExtensionLegacy {
       try { this._ui.close(); } catch (_e) {}
       this._ui = null;
     }
-    const showAppBar = this._settings ? 
+    const showAppBar = this._settings ?
       this._settings.get_boolean('show-app-bar') : true;
-    this._ui = new WinpickUI({ showAppBar });
+    const enableMovePopover = this._settings ?
+      this._settings.get_boolean('enable-move-popover') : true;
+    this._ui = new WinpickUI({ showAppBar, enableMovePopover });
     this._ui.open();
   }
 

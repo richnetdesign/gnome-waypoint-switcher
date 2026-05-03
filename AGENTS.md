@@ -13,6 +13,7 @@
 - Fuzzy filtering updates list on text change.
 - Keyboard shortcuts: `Esc` close, `Enter` activates selection, arrows move selection, `PageUp/PageDown`, `Home/End`, `F5` refresh.
 - Move popup behaves like a context menu: anchored to invoking button, disappears on outside click or `Esc`, no stage dimming.
+- Move popup can be hidden with GSettings key `enable-move-popover`.
 
 ## Implementation Details
 - **GNOME Modules**: uses `Main.pushModal`, `St`, `Clutter`, `Meta`, `Pango`, `Shell`.
