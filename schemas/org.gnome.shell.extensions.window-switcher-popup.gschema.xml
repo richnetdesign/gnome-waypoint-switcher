@@ -20,5 +20,11 @@
       <summary>Enable move window popover</summary>
       <description>When enabled, rows include a move button that opens the monitor placement popover.</description>
     </key>
+    <key name="show-dev-dir-tab" type="b">
+      <default>false</default>
+      <summary>Show development directory tab</summary>
+      <description>When enabled, adds a tab to show recent development directories.</description>
+    </key>
   </schema>
 </schemalist>
+
