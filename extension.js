@@ -16,6 +16,18 @@ import {
   positionMovePopup,
   makeMoveOption
 } from './window-movement.js';
+import {
+  fuzzyScore,
+  listWindows,
+  shouldIgnoreWindow,
+  applyGroupFilter
+} from './window-list.js';
+import {
+  makeInlineButton,
+  updateRowSelectionState,
+  estimatePageSize,
+  ensureSelectionVisible
+} from './ui.js';
 
 const BUS_NAME  = 'ca.richyoung.WindowPicker';
 const OBJ_PATH  = '/ca/richyoung/WindowPicker';
@@ -28,75 +40,8 @@ const IFACE_XML = `
   </interface>
 </node>`;
 
-const IGNORE_APP_IDS = new Set([
-  'org.gnome.screenshot',
-  'xwaylandvideobridge',
-  'xwaylandvideobridge.desktop',
-  'org.gnome.shell.screencast',
-  'waylandtoxrecordingbridge',
-  'waylandtoxrecordingbridge.desktop',
-]);
-
-const IGNORE_WM_CLASSES = new Set([
-  'xwaylandvideobridgerecorder',
-  'wayland to x recording bridge',
-  'wayland-to-x-recording-bridge',
-  'waylandtoxrecordingbridge',
-  'waylandtox-recording-bridge',
-]);
-
-const IGNORE_TITLE_SUBSTRINGS = [
-  'wayland recorder',
-  'wayland to x recording bridge',
-  'recording bridge',
-];
-
 let _ownId = 0;
 let _exported = null;
-
-function fuzzyScore(needle, hay) {
-  // Simple subsequence score: characters in order = points, contiguous bonus
-  needle = needle.toLowerCase();
-  hay = hay.toLowerCase();
-  let score = 0, j = 0, streak = 0;
-  for (let i = 0; i < hay.length && j < needle.length; i++) {
-    if (hay[i] === needle[j]) {
-      j++; score += 5 + streak; streak++;
-    } else {
-      streak = 0;
-    }
-  }
-  return j === needle.length ? score : 0;
-}
-
-function listWindows() {
-  const tracker = Shell.WindowTracker.get_default();
-  return global.get_window_actors().map(w => {
-    const m = w.meta_window;
-    const app = tracker.get_window_app(m);
-    const info = {
-      id: m.get_id(),
-      title: String(m.get_title() || ""),
-      appId: app ? app.get_id() : "",
-      app: app ? app.get_name() : (m.get_wm_class() || ""),
-      wmClass: m.get_wm_class() || "",
-      icon: app || null,
-    };
-    return shouldIgnoreWindow(info) ? null : info;
-  }).filter(Boolean);
-}
-
-function shouldIgnoreWindow(info) {
-  const title = info.title.toLowerCase();
-  const appId = info.appId.toLowerCase();
-  const wmClass = info.wmClass.toLowerCase();
-
-  if (IGNORE_APP_IDS.has(appId))
-    return true;
-  if (IGNORE_WM_CLASSES.has(wmClass))
-    return true;
-  return IGNORE_TITLE_SUBSTRINGS.some(substr => title.includes(substr));
-}
 
 class WinpickUI {
   constructor(options = {}) {
@@ -239,14 +184,14 @@ class WinpickUI {
       title.clutter_text.set_line_alignment(Pango.Alignment.LEFT);
       title.clutter_text.set_justify(false);
       const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions', x_align: Clutter.ActorAlign.END });
-      const closeBtn = this._makeInlineButton('window-close-symbolic', 'Close window');
+      const closeBtn = makeInlineButton('window-close-symbolic', 'Close window');
       closeBtn.connect('clicked', () => {
         this._suppressRowActivate = true;
         this._closeWindow(w.id);
       });
       actions.add_child(closeBtn);
       if (this._enableMovePopover) {
-        const moveBtn = this._makeInlineButton('go-top-symbolic', 'Move window');
+        const moveBtn = makeInlineButton('go-top-symbolic', 'Move window');
         moveBtn.connect('clicked', () => {
           this._suppressRowActivate = true;
           this._openMoveDialog(w, moveBtn);
@@ -274,9 +219,9 @@ class WinpickUI {
         return Clutter.EVENT_PROPAGATE;
       });
       this._list.add_child(row);
-      this._updateRowSelectionState(row, idx === this._selectionIndex);
+      updateRowSelectionState(row, idx === this._selectionIndex);
     });
-    this._ensureSelectionVisible();
+    ensureSelectionVisible(this._scroll, this._selected);
   }
 
   _connect(obj, signal, cb) {
@@ -289,23 +234,24 @@ class WinpickUI {
     this._events = [];
   }
 
-  _onFilter() {
+ _onFilter() {
     const q = this._entry.get_text().trim();
     this._selectionIndex = 0;
     if (!q) {
-      this._filtered = this._applyGroupFilter(this._windows);
+      this._filtered = applyGroupFilter(this._windows, this._groupFilter);
     } else {
-      this._filtered = this._applyGroupFilter(this._windows)
+      this._filtered = applyGroupFilter(this._windows, this._groupFilter)
         .map(w => ({ w, s: Math.max(
           fuzzyScore(q, w.title),
           fuzzyScore(q, w.app),
-        )}))
-        .filter(o => o.s > 0)
-        .sort((a,b) => b.s - a.s)
-        .map(o => o.w);
+          //fuzzyScore(q, w.appId),
+          //fuzzyScore(q, w.wmClass)
+        ) }))
+        .filter(w => w.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .map(w => w.w);
     }
     this._rebuildList();
-    this._rebuildAppBar();
   }
 
   _onKey(ev) {
@@ -486,7 +432,7 @@ class WinpickUI {
     return button;
   }
 
-  _makeMoveOption(label, handler, isSecondary = false) {
+_makeMoveOption(label, handler, isSecondary = false) {
     return makeMoveOption.call(this, label, handler, isSecondary);
   }
 
@@ -564,7 +510,7 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
       let step = typeof delta === 'number' ? delta : 0;
       if (!Number.isFinite(step)) {
         const direction = step > 0 ? 1 : -1;
-        step = direction * this._estimatePageSize();
+        step = direction * estimatePageSize();
       }
       next = Math.max(0, Math.min(this._selectionIndex + step, this._filtered.length - 1));
     }
@@ -572,42 +518,7 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
   }
 
   _ensureSelectionVisible() {
-    if (!this._selected || !this._scroll)
-      return;
-    try {
-      if (typeof this._scroll.scroll_child_to_visible === 'function') {
-
-        let actor = this._scroll.get_clutter_actor();
-        // todo
-        actor.scroll_child_to_visible(this._selected);
-        return;
-      }
-    } catch (_e) {}
-    try {
-    const vScroll = this._scroll.get_vscroll_bar ? this._scroll.get_vscroll_bar() : null;
-    const adj = vScroll ? vScroll.get_adjustment() : null;
-    if (!adj)
-      return;
-    const box = this._selected.get_allocation_box();
-    const rowTop = box.y1;
-    const rowBottom = box.y2;
-    const lower = adj.get_lower ? adj.get_lower() : (adj.lower || 0);
-    const upper = adj.get_upper ? adj.get_upper() : (adj.upper || (this._list ? this._list.height : 0));
-    const current = adj.get_value ? adj.get_value() : adj.value;
-    const page = (adj.get_page_size ? adj.get_page_size() : adj.page_size) || this._scroll.height || 1;
-    let target = current;
-    if (rowTop < current)
-      target = rowTop;
-    else if (rowBottom > current + page)
-      target = rowBottom - page;
-    target = Math.min(Math.max(target, lower), Math.max(lower, upper - page));
-    if (Math.abs(target - current) > 1) {
-      if (typeof adj.set_value === 'function')
-        adj.set_value(target);
-      else
-        adj.value = target;
-      }
-    } catch (_e) {}
+    ensureSelectionVisible(this._scroll, this._selected);
   }
 
   _updateRowSelectionState(row, isSelected) {
@@ -704,9 +615,7 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
   }
 
   _applyGroupFilter(list) {
-    if (!this._groupFilter)
-      return list;
-    return list.filter(w => w.appId === this._groupFilter);
+    return applyGroupFilter(list, this._groupFilter);
   }
 
   _rebuildAppBar() {

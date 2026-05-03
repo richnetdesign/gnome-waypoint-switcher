@@ -86,13 +86,26 @@ export function moveWindow(id, monitorIndex, placement) {
 export function buildMonitorGrid(windowInfo, monitorIndex, monitor) {
   const baseHeight = 140;
   const aspect = monitor.width / Math.max(1, monitor.height);
-  let width = Math.round(baseHeight * aspect);
-  width = Math.min(420, Math.max(120, width));
-  let height = baseHeight;
-  if (monitor.height > monitor.width) {
-    // portrait: base on width instead
-    const portraitHeight = Math.round(width / Math.max(0.1, aspect));
-    height = Math.max(120, Math.min(420, portraitHeight));
+  
+  // Determine if this is a portrait monitor (width < height)
+  const isPortrait = monitor.width < monitor.height;
+  
+  let width, height;
+  
+  if (isPortrait) {
+    // For portrait monitors, use height as the base dimension
+    height = baseHeight;
+    width = Math.round(height * aspect);
+    // Ensure width is within reasonable bounds
+    width = Math.min(420, Math.max(120, width));
+    // Adjust height to maintain aspect ratio
+    height = Math.round(width / Math.max(0.1, aspect));
+    height = Math.max(120, Math.min(420, height));
+  } else {
+    // For landscape monitors, use width as the base dimension
+    width = baseHeight * aspect;
+    width = Math.min(420, Math.max(120, width));
+    height = baseHeight;
   }
 
   const container = new St.Widget({
