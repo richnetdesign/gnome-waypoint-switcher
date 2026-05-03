@@ -7,10 +7,10 @@
     "46",
     "47",
     "48",
-    "49"
+    "49",
+    "50"
   ],
-  "version": 2
-  ,
+  "version": 3,
   "settings-schema": "org.gnome.shell.extensions.window-switcher-popup",
   "stylesheets": [
     "stylesheet.css"
