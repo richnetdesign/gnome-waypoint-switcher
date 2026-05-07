@@ -52,4 +52,4 @@ else
   echo "Tip: Install gnome-extensions CLI to manage extensions."
 fi
 
-echo "Done. If on Wayland: log out/in. On Xorg: press Alt+F2, type 'r', press Enter."
+echo "Done. On Wayland/GNOME 50+: log out/in. On older Xorg: press Alt+F2, type 'r', press Enter."

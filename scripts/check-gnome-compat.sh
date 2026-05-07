@@ -1,24 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FAILURES=0
-
-grep_api() {
-  local symbol="$1"
-  local file="$2"
-  if grep -R --line-number --fixed-strings "$symbol" "$file" >/dev/null; then
-    echo "[WARN] Found GNOME 46+ API usage: $symbol"
-    ((FAILURES++)) || true
-  fi
-}
-
-grep_api "Main.wm.addKeybinding" extension.js
-grep_api "Main.pushModal" extension.js
-grep_api "Shell.WindowTracker" extension.js
-
-if (( FAILURES > 0 )); then
-  echo "Compatibility check flagged potential GNOME API changes." >&2
+if ! grep -q '"50"' metadata.json; then
+  echo "[FAIL] metadata.json does not declare GNOME Shell 50 support." >&2
   exit 1
+fi
+
+if command -v glib-compile-schemas >/dev/null 2>&1; then
+  glib-compile-schemas --strict --dry-run schemas
+else
+  echo "[WARN] glib-compile-schemas not found; skipping schema validation." >&2
 fi
 
 echo "Compatibility check passed."

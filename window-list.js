@@ -89,18 +89,13 @@ export function shouldIgnoreWindow(info) {
 /**
  * Apply grouping filter to windows
  */
+export function getWindowGroupKey(windowInfo) {
+  return windowInfo.appId || windowInfo.wmClass || windowInfo.app || windowInfo.title;
+}
+
 export function applyGroupFilter(windows, groupFilter = null) {
-  if (!groupFilter) return windows;
-  
-  const groups = {};
-  windows.forEach(w => {
-    const key = w.appId || w.wmClass || w.app || w.title;
-    if (!groups[key]) {
-      groups[key] = [];
-    }
-    groups[key].push(w);
-  });
-  
-  // Return only the first window from each group
-  return Object.values(groups).map(group => group[0]);
+  if (!groupFilter)
+    return windows;
+
+  return windows.filter(w => getWindowGroupKey(w) === groupFilter);
 }

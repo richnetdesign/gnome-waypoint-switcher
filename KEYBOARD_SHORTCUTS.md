@@ -45,6 +45,6 @@ If you prefer, you can add a custom shortcut via `gsettings`.
 - Ensure the extension is enabled:
   - `gnome-extensions enable window-switcher-popup@ai.richyoung.ca`
 - After installing/updating the extension, reload GNOME Shell:
-  - Xorg: `Alt+F2` → type `r` → `Enter`
-  - Wayland: log out/in (or use the included `./dev-install.sh` during development)
+  - Wayland and GNOME 50+: log out/in, or use the included `./dev-install.sh` during development
+  - Older Xorg sessions: `Alt+F2` -> type `r` -> `Enter`
 - The popup also closes on `Esc` and activates the top match on `Enter`.

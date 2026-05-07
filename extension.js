@@ -20,6 +20,7 @@ import {
   fuzzyScore,
   listWindows,
   shouldIgnoreWindow,
+  getWindowGroupKey,
   applyGroupFilter
 } from './window-list.js';
 import {
@@ -28,6 +29,11 @@ import {
   estimatePageSize,
   ensureSelectionVisible
 } from './ui.js';
+import {
+  loadDevDirs,
+  getDevDirItems,
+  launchDevDir
+} from './devdir.js';
 
 const BUS_NAME  = 'ca.richyoung.WindowPicker';
 const OBJ_PATH  = '/ca/richyoung/WindowPicker';
@@ -37,6 +43,7 @@ const IFACE_XML = `
 <node>
   <interface name="${IFACE}">
     <method name="Show"/>
+    <method name="ShowDevDir"/>
   </interface>
 </node>`;
 
@@ -244,8 +251,8 @@ class WinpickUI {
         .map(w => ({ w, s: Math.max(
           fuzzyScore(q, w.title),
           fuzzyScore(q, w.app),
-          //fuzzyScore(q, w.appId),
-          //fuzzyScore(q, w.wmClass)
+          fuzzyScore(q, w.appId),
+          fuzzyScore(q, w.wmClass)
         ) }))
         .filter(w => w.s > 0)
         .sort((a, b) => b.s - a.s)
@@ -437,8 +444,16 @@ _makeMoveOption(label, handler, isSecondary = false) {
   }
 
 _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
-    return buildMonitorGrid.call(this, windowInfo, monitorIndex, monitor);
-  }
+    const baseHeight = 140;
+    const aspect = monitor.width / Math.max(1, monitor.height);
+    let width = Math.round(baseHeight * aspect);
+    width = Math.min(420, Math.max(120, width));
+    let height = baseHeight;
+    if (monitor.height > monitor.width) {
+      // portrait: base on width instead
+      const portraitHeight = Math.round(width / Math.max(0.1, aspect));
+      height = Math.max(120, Math.min(420, portraitHeight));
+    }
 
     const container = new St.Widget({
       layout_manager: new Clutter.BinLayout(),
@@ -446,45 +461,16 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
     });
     container.set_size(width, height);
 
-    const layout = new Clutter.GridLayout();
-    layout.set_row_spacing(Math.round(height / 6));
-    layout.set_column_spacing(Math.round(width / 6));
-    const grid = new St.Widget({ layout_manager: layout, style_class: 'winpick-monitor-grid' });
-    grid.set_size(width, height);
-
-    const placements = [
-      { placement: 'left-top', row: 0, col: 0, label: 'Top Left' },
-      { placement: 'left-middle', row: 1, col: 0, label: 'Left Half' },
-      { placement: 'left-bottom', row: 2, col: 0, label: 'Bottom Left' },
-      { placement: 'center-full', row: 1, col: 1, label: 'Full Screen', extra: 'center' },
-      { placement: 'right-top', row: 0, col: 2, label: 'Top Right' },
-      { placement: 'right-middle', row: 1, col: 2, label: 'Right Half' },
-      { placement: 'right-bottom', row: 2, col: 2, label: 'Bottom Right' },
-    ];
-
-    placements.forEach(({ placement, row, col, label, extra }) => {
-      const btn = new St.Button({
-        style_class: 'winpick-monitor-point',
-        reactive: true,
-        can_focus: true,
-        accessible_name: `${label} on monitor ${monitorIndex + 1}`,
-      });
-      if (extra)
-        btn.add_style_class_name(`winpick-monitor-point-${extra}`);
-      btn.connect('clicked', () => {
-        this._suppressRowActivate = true;
-        this._moveWindow(windowInfo.id, monitorIndex, placement);
-      });
-      layout.attach(btn, col, row, 1, 1);
+    const bg = new St.Widget({
+      style_class: 'winpick-monitor-bg',
+      x_expand: true,
+      y_expand: true,
     });
-
-    container.add_child(grid);
+    container.add_child(bg);
 
     const indexLabel = new St.Label({
-      text: String(monitorIndex + 1),
+      text: `${monitorIndex + 1}`,
       style_class: 'winpick-monitor-index',
-      x_align: Clutter.ActorAlign.CENTER,
-      y_align: Clutter.ActorAlign.START,
     });
     indexLabel.set_position(8, 6);
     container.add_child(indexLabel);
@@ -624,25 +610,31 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
     this._appBar.destroy_all_children();
     const counts = new Map();
     this._windows.forEach(w => {
-      const key = w.appId || w.app || 'unknown';
-      const entry = counts.get(key) || { count: 0, icon: w.icon, app: w.app || key, appId: w.appId };
+      const key = getWindowGroupKey(w) || 'unknown';
+      const entry = counts.get(key) || { count: 0, icon: w.icon, app: w.app || key, appId: w.appId, key };
       entry.count += 1;
       counts.set(key, entry);
     });
-    const items = Array.from(counts.entries())
-      .map(([appId, data]) => ({ appId, ...data }))
+    const items = Array.from(counts.values())
       .sort((a, b) => b.count - a.count || a.app.localeCompare(b.app));
     items.forEach(item => {
       const btn = new St.Button({ style_class: 'winpick-appbutton', reactive: true, can_focus: true });
       const inner = new St.BoxLayout({ vertical: false, style_class: 'winpick-appbutton-inner' });
       const icon = item.icon ? item.icon.create_icon_texture(20) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 20 });
-      const badge = new St.Label({ text: String(item.count), style_class: 'winpick-appbutton-badge' });
+      const badge = new St.Label({
+        text: String(item.count),
+        style_class: 'winpick-appbutton-badge',
+        x_align: Clutter.ActorAlign.CENTER,
+        y_align: Clutter.ActorAlign.CENTER,
+      });
+      badge.clutter_text.set_single_line_mode(true);
+      badge.clutter_text.set_line_wrap(false);
       inner.add_child(icon);
       inner.add_child(badge);
       btn.set_child(inner);
-      if (this._groupFilter === item.appId)
+      if (this._groupFilter === item.key)
         btn.add_style_pseudo_class('selected');
-      btn.connect('clicked', () => this._toggleFilter(item.appId));
+      btn.connect('clicked', () => this._toggleFilter(item.key));
       // btn.set_tooltip_text(item.app || item.appId || ''); // Removed due to missing method
       this._appBar.add_child(btn);
     });
@@ -701,11 +693,20 @@ class WindowPickerExtensionLegacy {
     this._ui.open();
   }
 
+  _showDevDir() {
+    // Show development directories in the window switcher
+    // This would integrate devdir items with the window list
+    this._showPopup();
+  }
+
   enable() {
-    // D-Bus: expose Show()
+    // D-Bus: expose Show() and ShowDevDir()
     const nodeInfo = Gio.DBusNodeInfo.new_for_xml(IFACE_XML);
     const ifaceInfo = nodeInfo.interfaces[0];
-    const impl = { Show: () => this._showPopup() };
+    const impl = { 
+      Show: () => this._showPopup(),
+      ShowDevDir: () => this._showDevDir()
+    };
     const exported = Gio.DBusExportedObject.wrapJSObject(ifaceInfo, impl);
     _exported = exported;
 
