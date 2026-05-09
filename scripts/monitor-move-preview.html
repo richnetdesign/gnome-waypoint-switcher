@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GNOME Waypoint Switcher Monitor Move Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #151515;
+      --panel: #242424;
+      --panel-strong: #303030;
+      --line: rgba(255, 255, 255, 0.16);
+      --text: #f4f4f4;
+      --muted: #b8b8b8;
+      --accent: #ffd764;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.4 Cantarell, "Adwaita Sans", system-ui, sans-serif;
+    }
+
+    header {
+      max-width: 1100px;
+      margin: 0 auto 20px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .profiles {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .profile {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .profile-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .profile-status {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .monitor-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .monitor-card {
+      display: grid;
+      gap: 8px;
+      justify-items: start;
+    }
+
+    .monitor-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .winpick-monitor-box {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 12px 18px;
+      background-color: rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .winpick-monitor-box-portrait {
+      padding: 12px 14px;
+    }
+
+    .winpick-monitor-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .winpick-monitor-point {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background-color: rgba(255, 255, 255, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
+
+    .winpick-monitor-point-center {
+      width: 22px;
+      height: 22px;
+      background-color: rgba(255, 215, 100, 0.28);
+      border-color: rgba(255, 215, 100, 0.55);
+    }
+
+    .winpick-monitor-index {
+      position: absolute;
+      left: 8px;
+      top: 6px;
+      font-size: 16px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.75);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+      padding: 2px 6px;
+      background-color: rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+    }
+
+    .placements {
+      display: grid;
+      grid-template-columns: repeat(3, max-content);
+      gap: 4px 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GNOME Waypoint Switcher Monitor Move Preview</h1>
+    <p>Static harness for validating the move popover geometry outside GNOME Shell.</p>
+  </header>
+  <main id="profiles" class="profiles"></main>
+
+  <script>
+    const placements = [
+      { key: 'left-top', row: 0, col: 0, label: 'Top Left' },
+      { key: 'left-middle', row: 1, col: 0, label: 'Left Half' },
+      { key: 'left-bottom', row: 2, col: 0, label: 'Bottom Left' },
+      { key: 'center-full', row: 1, col: 1, label: 'Full Screen', extra: 'center' },
+      { key: 'right-top', row: 0, col: 2, label: 'Top Right' },
+      { key: 'right-middle', row: 1, col: 2, label: 'Right Half' },
+      { key: 'right-bottom', row: 2, col: 2, label: 'Bottom Right' },
+    ];
+
+    const profiles = [
+      {
+        name: 'Mixed ultrawide plus portrait side display',
+        monitors: [
+          { name: 'Waypoint UW38-X', connector: 'DP-1', x: 0, y: 454, width: 3840, height: 1600, primary: true },
+          { name: 'Waypoint Portrait 27P', connector: 'DP-2', x: 3840, y: 0, width: 1440, height: 2560, transform: 1 },
+        ],
+      },
+      {
+        name: 'Single ultrawide',
+        monitors: [
+          { name: 'Waypoint UW38-X', width: 3840, height: 1600, primary: true },
+        ],
+      },
+      {
+        name: 'Landscape plus portrait',
+        monitors: [
+          { name: 'Acme QHD-27', width: 2560, height: 1440, primary: true },
+          { name: 'Acme Pivot-24', width: 1080, height: 1920, transform: 1 },
+        ],
+      },
+      {
+        name: 'Portrait only',
+        monitors: [
+          { name: 'Acme Pivot-24', width: 1080, height: 1920, primary: true, transform: 1 },
+        ],
+      },
+      {
+        name: '1080p laptop with portable monitor',
+        monitors: [
+          { name: 'Laptop Panel 15F', connector: 'eDP-1', x: 0, y: 0, width: 1920, height: 1080, primary: true },
+          { name: 'Travel Display 14T', connector: 'USB-C-1', x: 1920, y: 90, width: 1920, height: 1080 },
+        ],
+      },
+      {
+        name: '1080p laptop with portrait portable monitor',
+        monitors: [
+          { name: 'Laptop Panel 13F', connector: 'eDP-1', x: 0, y: 420, width: 1920, height: 1080, primary: true },
+          { name: 'Travel Pivot 16T', connector: 'USB-C-1', x: 1920, y: 0, width: 1200, height: 1920, transform: 1 },
+        ],
+      },
+      {
+        name: 'Dual 1080p office displays',
+        monitors: [
+          { name: 'OfficeView 24A', connector: 'HDMI-1', x: 0, y: 0, width: 1920, height: 1080, primary: true },
+          { name: 'OfficeView 24B', connector: 'DP-1', x: 1920, y: 0, width: 1920, height: 1080 },
+        ],
+      },
+      {
+        name: '4K primary with 1080p side display',
+        monitors: [
+          { name: 'Studio 4K-27', connector: 'DP-1', x: 0, y: 0, width: 3840, height: 2160, primary: true },
+          { name: 'SideView FHD-22', connector: 'HDMI-1', x: 3840, y: 540, width: 1920, height: 1080 },
+        ],
+      },
+      {
+        name: 'Stacked laptop and external display',
+        monitors: [
+          { name: 'Desktop QHD-27', connector: 'DP-1', x: 0, y: 0, width: 2560, height: 1440, primary: true },
+          { name: 'Laptop Panel 14F', connector: 'eDP-1', x: 320, y: 1440, width: 1920, height: 1080 },
+        ],
+      },
+    ];
+
+    function previewSize(monitor) {
+      const baseHeight = 140;
+      const aspect = monitor.width / Math.max(1, monitor.height);
+      const portrait = monitor.height > monitor.width;
+      let width;
+      let height;
+
+      if (portrait) {
+        width = 140;
+        height = Math.round(width / Math.max(0.1, aspect));
+      } else {
+        width = Math.round(baseHeight * aspect);
+        height = baseHeight;
+      }
+
+      return {
+        width: Math.min(420, Math.max(120, width)),
+        height: Math.min(420, Math.max(120, height)),
+        portrait,
+      };
+    }
+
+    function renderMonitor(monitor, index) {
+      const size = previewSize(monitor);
+      const card = document.createElement('section');
+      card.className = 'monitor-card';
+
+      const label = document.createElement('div');
+      label.className = 'monitor-label';
+      label.textContent = `${index + 1}. ${monitor.name || 'Monitor'} ${monitor.width}x${monitor.height}`;
+      card.append(label);
+
+      const box = document.createElement('div');
+      box.className = `winpick-monitor-box${size.portrait ? ' winpick-monitor-box-portrait' : ''}`;
+      box.style.width = `${size.width}px`;
+      box.style.height = `${size.height}px`;
+
+      const grid = document.createElement('div');
+      grid.className = 'winpick-monitor-grid';
+      placements.forEach(placement => {
+        const point = document.createElement('button');
+        point.className = `winpick-monitor-point${placement.extra ? ` winpick-monitor-point-${placement.extra}` : ''}`;
+        point.style.gridColumn = String(placement.col + 1);
+        point.style.gridRow = String(placement.row + 1);
+        point.title = placement.label;
+        point.setAttribute('aria-label', `${placement.label} on monitor ${index + 1}`);
+        grid.append(point);
+      });
+      box.append(grid);
+
+      const indexLabel = document.createElement('div');
+      indexLabel.className = 'winpick-monitor-index';
+      indexLabel.textContent = String(index + 1);
+      box.append(indexLabel);
+
+      card.append(box);
+      return card;
+    }
+
+    function validateProfile(profile, root) {
+      const monitors = root.querySelectorAll('.monitor-card');
+      const points = root.querySelectorAll('.winpick-monitor-point');
+      const portraitMonitors = profile.monitors.filter(monitor => monitor.height > monitor.width).length;
+      const portraitBoxes = root.querySelectorAll('.winpick-monitor-box-portrait').length;
+      const failures = [];
+
+      if (monitors.length !== profile.monitors.length)
+        failures.push(`expected ${profile.monitors.length} monitors, rendered ${monitors.length}`);
+      if (points.length !== profile.monitors.length * placements.length)
+        failures.push(`expected ${profile.monitors.length * placements.length} points, rendered ${points.length}`);
+      if (portraitBoxes !== portraitMonitors)
+        failures.push(`expected ${portraitMonitors} portrait boxes, rendered ${portraitBoxes}`);
+
+      return failures;
+    }
+
+    function renderProfile(profile) {
+      const section = document.createElement('section');
+      section.className = 'profile';
+
+      const header = document.createElement('div');
+      header.className = 'profile-header';
+      const title = document.createElement('div');
+      title.className = 'profile-title';
+      title.textContent = profile.name;
+      const status = document.createElement('div');
+      status.className = 'profile-status';
+      header.append(title, status);
+      section.append(header);
+
+      const row = document.createElement('div');
+      row.className = 'monitor-row';
+      profile.monitors.forEach((monitor, index) => row.append(renderMonitor(monitor, index)));
+      section.append(row);
+
+      const failures = validateProfile(profile, section);
+      status.textContent = failures.length === 0 ? 'valid' : failures.join('; ');
+      status.style.color = failures.length === 0 ? 'var(--accent)' : '#ff8080';
+      return section;
+    }
+
+    const root = document.getElementById('profiles');
+    profiles.forEach(profile => root.append(renderProfile(profile)));
+  </script>
+</body>
+</html>

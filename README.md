@@ -155,3 +155,12 @@ gnome-extensions enable window-switcher-popup@ai.richyoung.ca
 ```
 
 Reload GNOME Shell after copying: log out/in on Wayland or GNOME 50+, or use Alt+F2 -> `r` on older Xorg sessions. Update the ISO path or VM resources in the script if you need a different environment.
+
+## Monitor Move Preview
+The move popover is GNOME Shell chrome, which can be awkward to screenshot on Wayland. Use the static preview harness to validate monitor placement rendering outside the live Shell popup:
+
+```
+xdg-open scripts/monitor-move-preview.html
+```
+
+The preview includes generic monitor profiles for ultrawide, portrait, laptop, portable, dual-display, 4K side-display, and stacked monitor layouts.
