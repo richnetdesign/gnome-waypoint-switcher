@@ -21,6 +21,12 @@ jobs:
         run: |
           glib-compile-schemas --strict --dry-run schemas
 
+      - name: Compute artifact version
+        id: version
+        run: |
+          semver="$(git describe --always --tags --dirty)"
+          echo "semver=${semver}" >> "$GITHUB_OUTPUT"
+
       # - name: Check GNOME API compatibility
       #   run: |
       #     scripts/check-gnome-compat.sh
@@ -33,8 +39,12 @@ jobs:
             --extra-source README.md \
             --out-dir dist
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload extension artifact
+        uses: richnetdesign/git-artifact-upload@v2
         with:
-          name: window-switcher-popup
+          name: gnome-waypoint-switcher-extension
+          filename: gnome-waypoint-switcher-extension
+          version: ${{ steps.version.outputs.semver }}
           path: dist/*.zip
+          append-max-detail-suffix: true
+          retention-days: 7
