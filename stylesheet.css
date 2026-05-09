@@ -140,6 +140,14 @@
   color: #ffeaea;
 }
 
+.winpick-row-pinned {
+  border: 1px solid rgba(255, 215, 100, 0.55);
+}
+
+.winpick-pin-button.pinned {
+  background-color: rgba(255, 215, 100, 0.18);
+}
+
 .winpick-window-highlight {
   border: 3px solid rgba(255, 160, 0, 0.85);
   background-color: rgba(255, 160, 0, 0.18);

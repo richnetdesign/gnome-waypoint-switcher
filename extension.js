@@ -21,7 +21,9 @@ import {
   listWindows,
   shouldIgnoreWindow,
   getWindowGroupKey,
-  applyGroupFilter
+  getWindowPinKey,
+  applyGroupFilter,
+  sortPinnedFirst
 } from './window-list.js';
 import {
   makeInlineButton,
@@ -54,6 +56,8 @@ class WinpickUI {
   constructor(options = {}) {
     this._showAppBar = options.showAppBar !== false;
     this._enableMovePopover = options.enableMovePopover !== false;
+    this._settings = options.settings || null;
+    this._pinnedKeys = this._loadPinnedKeys();
     this._groupFilter = null;
 
     this._actor = new St.BoxLayout({ vertical: true, style_class: 'winpick-popup', reactive: true, can_focus: true });
@@ -97,7 +101,7 @@ class WinpickUI {
 
   open() {
     this._windows = listWindows();
-    this._filtered = this._windows;
+    this._filtered = this._sortWindows(this._windows);
     this._groupFilter = null;
     this._selectionIndex = 0;
     this._rebuildList();
@@ -191,11 +195,24 @@ class WinpickUI {
       title.clutter_text.set_line_alignment(Pango.Alignment.LEFT);
       title.clutter_text.set_justify(false);
       const actions = new St.BoxLayout({ vertical: false, style_class: 'winpick-row-actions', x_align: Clutter.ActorAlign.END });
+      const pinKey = getWindowPinKey(w);
+      const isPinned = this._isPinned(w);
+      const pinBtn = makeInlineButton(isPinned ? 'starred-symbolic' : 'non-starred-symbolic', isPinned ? 'Unpin window' : 'Pin window');
+      pinBtn.add_style_class_name('winpick-pin-button');
+      if (isPinned) {
+        row.add_style_class_name('winpick-row-pinned');
+        pinBtn.add_style_class_name('pinned');
+      }
+      pinBtn.connect('clicked', () => {
+        this._suppressRowActivate = true;
+        this._togglePin(pinKey);
+      });
       const closeBtn = makeInlineButton('window-close-symbolic', 'Close window');
       closeBtn.connect('clicked', () => {
         this._suppressRowActivate = true;
         this._closeWindow(w.id);
       });
+      actions.add_child(pinBtn);
       actions.add_child(closeBtn);
       if (this._enableMovePopover) {
         const moveBtn = makeInlineButton('go-top-symbolic', 'Move window');
@@ -245,9 +262,9 @@ class WinpickUI {
     const q = this._entry.get_text().trim();
     this._selectionIndex = 0;
     if (!q) {
-      this._filtered = applyGroupFilter(this._windows, this._groupFilter);
+      this._filtered = this._sortWindows(applyGroupFilter(this._windows, this._groupFilter));
     } else {
-      this._filtered = applyGroupFilter(this._windows, this._groupFilter)
+      this._filtered = this._sortWindows(applyGroupFilter(this._windows, this._groupFilter)
         .map(w => ({ w, s: Math.max(
           fuzzyScore(q, w.title),
           fuzzyScore(q, w.app),
@@ -256,7 +273,7 @@ class WinpickUI {
         ) }))
         .filter(w => w.s > 0)
         .sort((a, b) => b.s - a.s)
-        .map(w => w.w);
+        .map(w => w.w));
     }
     this._rebuildList();
   }
@@ -424,6 +441,43 @@ class WinpickUI {
 
   _refreshWindows() {
     this._windows = listWindows();
+    this._onFilter();
+  }
+
+  _loadPinnedKeys() {
+    if (!this._settings)
+      return new Set();
+    try {
+      return new Set(this._settings.get_strv('pinned-windows'));
+    } catch (_e) {
+      return new Set();
+    }
+  }
+
+  _savePinnedKeys() {
+    if (!this._settings)
+      return;
+    try {
+      this._settings.set_strv('pinned-windows', Array.from(this._pinnedKeys));
+    } catch (e) {
+      log(`window-switcher-popup: failed to save pinned windows: ${e}`);
+    }
+  }
+
+  _isPinned(windowInfo) {
+    return this._pinnedKeys.has(getWindowPinKey(windowInfo));
+  }
+
+  _sortWindows(windows) {
+    return sortPinnedFirst(windows, this._pinnedKeys);
+  }
+
+  _togglePin(pinKey) {
+    if (this._pinnedKeys.has(pinKey))
+      this._pinnedKeys.delete(pinKey);
+    else
+      this._pinnedKeys.add(pinKey);
+    this._savePinnedKeys();
     this._onFilter();
   }
 
@@ -658,7 +712,7 @@ class WindowPickerExtensionLegacy {
       this._settings.get_boolean('show-app-bar') : true;
     const enableMovePopover = this._settings ?
       this._settings.get_boolean('enable-move-popover') : true;
-    this._ui = new WinpickUI({ showAppBar, enableMovePopover });
+    this._ui = new WinpickUI({ showAppBar, enableMovePopover, settings: this._settings });
     this._ui.open();
   }
 

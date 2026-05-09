@@ -25,6 +25,11 @@
       <summary>Show development directory tab</summary>
       <description>When enabled, adds a tab to show recent development directories.</description>
     </key>
+    <key name="pinned-windows" type="as">
+      <default>[]</default>
+      <summary>Pinned window instance keys</summary>
+      <description>Internal list of live window instance identifiers that should be sorted before unpinned windows.</description>
+    </key>
   </schema>
 </schemalist>
 

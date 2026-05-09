@@ -65,6 +65,7 @@ export function listWindows() {
       appId: app ? app.get_id() : "",
       app: app ? app.get_name() : (m.get_wm_class() || ""),
       wmClass: m.get_wm_class() || "",
+      stableSequence: typeof m.get_stable_sequence === 'function' ? m.get_stable_sequence() : null,
       icon: app || null,
     };
     return shouldIgnoreWindow(info) ? null : info;
@@ -93,9 +94,31 @@ export function getWindowGroupKey(windowInfo) {
   return windowInfo.appId || windowInfo.wmClass || windowInfo.app || windowInfo.title;
 }
 
+export function getWindowPinKey(windowInfo) {
+  const identity = `${windowInfo.appId || ''}|${windowInfo.wmClass || ''}`;
+  if (windowInfo.stableSequence !== null && windowInfo.stableSequence !== undefined)
+    return `seq:${windowInfo.stableSequence}:${identity}`;
+  if (windowInfo.id !== null && windowInfo.id !== undefined)
+    return `id:${windowInfo.id}:${identity}`;
+  return `meta:${identity}|${windowInfo.title}`;
+}
+
 export function applyGroupFilter(windows, groupFilter = null) {
   if (!groupFilter)
     return windows;
 
   return windows.filter(w => getWindowGroupKey(w) === groupFilter);
+}
+
+export function sortPinnedFirst(windows, pinnedKeys) {
+  if (!pinnedKeys || pinnedKeys.size === 0)
+    return windows;
+
+  return windows.slice().sort((a, b) => {
+    const aPinned = pinnedKeys.has(getWindowPinKey(a));
+    const bPinned = pinnedKeys.has(getWindowPinKey(b));
+    if (aPinned === bPinned)
+      return 0;
+    return aPinned ? -1 : 1;
+  });
 }

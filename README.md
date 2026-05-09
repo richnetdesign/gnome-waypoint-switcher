@@ -61,7 +61,8 @@ See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
 - Enter activates the top result, Esc closes.
 - F5 manually refreshes the list in case you need a quick re-sync.
 - Arrow keys move the selection; Enter activates the highlighted window.
-- Right-click a row to select it without activating; inline buttons close or move windows.
+- Right-click a row to select it without activating; inline buttons pin, close, or move windows.
+- Pinned window instances are sorted before unpinned windows.
 - Optional app bar groups windows by app; toggle via `show-app-bar` (GSettings).
 - Optional move popover can be disabled via `enable-move-popover` (GSettings).
 
