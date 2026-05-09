@@ -86,40 +86,63 @@ export function moveWindow(id, monitorIndex, placement) {
 export function buildMonitorGrid(windowInfo, monitorIndex, monitor) {
   const baseHeight = 140;
   const aspect = monitor.width / Math.max(1, monitor.height);
-  
-  // Determine if this is a portrait monitor (width < height)
-  const isPortrait = monitor.width < monitor.height;
-  
-  let width, height;
-  
+  const isPortrait = monitor.height > monitor.width;
+
+  let width;
+  let height;
+
   if (isPortrait) {
-    // For portrait monitors, use height as the base dimension
-    height = baseHeight;
-    width = Math.round(height * aspect);
-    // Ensure width is within reasonable bounds
-    width = Math.min(420, Math.max(120, width));
-    // Adjust height to maintain aspect ratio
+    width = 140;
     height = Math.round(width / Math.max(0.1, aspect));
-    height = Math.max(120, Math.min(420, height));
   } else {
-    // For landscape monitors, use width as the base dimension
-    width = baseHeight * aspect;
-    width = Math.min(420, Math.max(120, width));
+    width = Math.round(baseHeight * aspect);
     height = baseHeight;
   }
+
+  width = Math.min(420, Math.max(120, width));
+  height = Math.min(420, Math.max(120, height));
 
   const container = new St.Widget({
     layout_manager: new Clutter.BinLayout(),
     style_class: 'winpick-monitor-box',
   });
   container.set_size(width, height);
+  if (isPortrait)
+    container.add_style_class_name('winpick-monitor-box-portrait');
 
-  const bg = new St.Widget({
-    style_class: 'winpick-monitor-bg',
-    x_expand: true,
-    y_expand: true,
+  const layout = new Clutter.GridLayout();
+  layout.set_row_spacing(Math.max(6, Math.round(height / 10)));
+  layout.set_column_spacing(Math.max(6, Math.round(width / 10)));
+  const grid = new St.Widget({ layout_manager: layout, style_class: 'winpick-monitor-grid' });
+  grid.set_size(width, height);
+
+  const placements = [
+    { placement: 'left-top', row: 0, col: 0, label: 'Top Left' },
+    { placement: 'left-middle', row: 1, col: 0, label: 'Left Half' },
+    { placement: 'left-bottom', row: 2, col: 0, label: 'Bottom Left' },
+    { placement: 'center-full', row: 1, col: 1, label: 'Full Screen', extra: 'center' },
+    { placement: 'right-top', row: 0, col: 2, label: 'Top Right' },
+    { placement: 'right-middle', row: 1, col: 2, label: 'Right Half' },
+    { placement: 'right-bottom', row: 2, col: 2, label: 'Bottom Right' },
+  ];
+
+  placements.forEach(({ placement, row, col, label, extra }) => {
+    const btn = new St.Button({
+      style_class: 'winpick-monitor-point',
+      reactive: true,
+      can_focus: true,
+      accessible_name: `${label} on monitor ${monitorIndex + 1}`,
+    });
+    if (extra)
+      btn.add_style_class_name(`winpick-monitor-point-${extra}`);
+    btn.connect('clicked', () => {
+      this._suppressRowActivate = true;
+      this._moveWindow(windowInfo.id, monitorIndex, placement);
+    });
+    layout.attach(btn, col, row, 1, 1);
   });
-  container.add_child(bg);
+
+  container.add_child(grid);
 
   const indexLabel = new St.Label({
     text: `${monitorIndex + 1}`,

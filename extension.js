@@ -444,38 +444,7 @@ _makeMoveOption(label, handler, isSecondary = false) {
   }
 
 _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
-    const baseHeight = 140;
-    const aspect = monitor.width / Math.max(1, monitor.height);
-    let width = Math.round(baseHeight * aspect);
-    width = Math.min(420, Math.max(120, width));
-    let height = baseHeight;
-    if (monitor.height > monitor.width) {
-      // portrait: base on width instead
-      const portraitHeight = Math.round(width / Math.max(0.1, aspect));
-      height = Math.max(120, Math.min(420, portraitHeight));
-    }
-
-    const container = new St.Widget({
-      layout_manager: new Clutter.BinLayout(),
-      style_class: 'winpick-monitor-box',
-    });
-    container.set_size(width, height);
-
-    const bg = new St.Widget({
-      style_class: 'winpick-monitor-bg',
-      x_expand: true,
-      y_expand: true,
-    });
-    container.add_child(bg);
-
-    const indexLabel = new St.Label({
-      text: `${monitorIndex + 1}`,
-      style_class: 'winpick-monitor-index',
-    });
-    indexLabel.set_position(8, 6);
-    container.add_child(indexLabel);
-
-    return container;
+    return buildMonitorGrid.call(this, windowInfo, monitorIndex, monitor);
   }
 
   _positionMovePopup(popup) {

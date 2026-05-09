@@ -209,6 +209,10 @@
   position: relative;
 }
 
+.winpick-monitor-box-portrait {
+  padding: 12px 14px;
+}
+
 .winpick-monitor-grid {
   width: 100%;
   height: 100%;
