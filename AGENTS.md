@@ -1,4 +1,4 @@
-# Window Switcher Popup — Project Notes for Agents
+# GNOME Waypoint Switcher — Project Notes for Agents
 
 ## What This Extension Does
 - **Purpose**: Provide an in-shell window switcher popup for GNOME with fuzzy matching, keyboard navigation, and inline actions (activate, close, move).

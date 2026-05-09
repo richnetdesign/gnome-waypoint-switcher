@@ -1,4 +1,4 @@
-# Keyboard Shortcut: Trigger Window Picker
+# Keyboard Shortcut: Trigger GNOME Waypoint Switcher
 
 This extension includes a built‑in keybinding (default: `Super+Y`) and also exposes a D‑Bus method you can bind to any custom shortcut.
 
@@ -11,7 +11,7 @@ This extension includes a built‑in keybinding (default: `Super+Y`) and also ex
 ## Quick setup (GUI) for a custom shortcut
 - Open `Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts`.
 - Add a new shortcut:
-  - Name: `Window Picker`
+  - Name: `GNOME Waypoint Switcher`
   - Command:
     - `gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show`
   - Shortcut: press your preferred combo. Suggested default: `Super+Y` (commonly free on stock GNOME).
@@ -37,7 +37,7 @@ If you prefer, you can add a custom shortcut via `gsettings`.
   - `gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings`
 - Add a new binding at `custom0` (use `custom1`, `custom2`, etc. if taken):
   - `gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"`
-  - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ name 'Window Picker'`
+  - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ name 'GNOME Waypoint Switcher'`
   - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ command "gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show"`
   - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ binding '<Super>Y'`
 

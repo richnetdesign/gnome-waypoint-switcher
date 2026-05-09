@@ -1,7 +1,7 @@
 {
   "uuid": "window-switcher-popup@ai.richyoung.ca",
-  "name": "Window Switcher Popup",
-  "description": "Show a fuzzy window-title picker inside GNOME (Wayland-safe). Exposes D-Bus method Show to trigger from a keyboard shortcut.",
+  "name": "GNOME Waypoint Switcher",
+  "description": "Show a fuzzy in-shell window switcher for GNOME. Exposes D-Bus method Show to trigger from a keyboard shortcut.",
   "shell-version": [
     "45",
     "46",

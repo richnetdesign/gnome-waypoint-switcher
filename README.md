@@ -1,7 +1,7 @@
 
-# Window Switcher Popup (All-in-one, no wofi)
+# GNOME Waypoint Switcher
 
-A GNOME Shell extension that shows a fuzzy window-title picker *inside* GNOME.
+A GNOME Shell extension that shows a fuzzy Waypoint window switcher *inside* GNOME.
 No unsafe mode, Wayland-safe. It exposes a simple D-Bus method `Show` so you can
 bind it to a global keyboard shortcut (suggested: **Super+Y**).
 
@@ -44,7 +44,7 @@ You can also create an additional custom shortcut via Settings if you prefer.
 
 ### Bind a Custom Shortcut (optional)
 Open **Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts**:
-- Name: Window Picker
+- Name: GNOME Waypoint Switcher
 - Command:
   ```
   gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show
