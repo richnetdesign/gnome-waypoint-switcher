@@ -1,5 +1,5 @@
 {
-  "uuid": "window-switcher-popup@ai.richyoung.ca",
+  "uuid": "gnome-waypoint-switcher@richnetdesign.github.io",
   "name": "GNOME Waypoint Switcher",
   "description": "Show a fuzzy in-shell window switcher for GNOME. Exposes D-Bus method Show to trigger from a keyboard shortcut.",
   "shell-version": [
@@ -11,7 +11,7 @@
     "50"
   ],
   "version": 3,
-  "settings-schema": "org.gnome.shell.extensions.window-switcher-popup",
+  "settings-schema": "io.github.richnetdesign.gnome-waypoint-switcher",
   "stylesheets": [
     "stylesheet.css"
   ]

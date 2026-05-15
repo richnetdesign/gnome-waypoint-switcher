@@ -37,9 +37,9 @@ import {
   launchDevDir
 } from './devdir.js';
 
-const BUS_NAME  = 'ca.richyoung.WindowPicker';
-const OBJ_PATH  = '/ca/richyoung/WindowPicker';
-const IFACE     = 'ca.richyoung.WindowPicker';
+const BUS_NAME  = 'io.github.richnetdesign.GnomeWaypointSwitcher';
+const OBJ_PATH  = '/io/github/richnetdesign/GnomeWaypointSwitcher';
+const IFACE     = 'io.github.richnetdesign.GnomeWaypointSwitcher';
 
 const IFACE_XML = `
 <node>
@@ -460,7 +460,7 @@ class WinpickUI {
     try {
       this._settings.set_strv('pinned-windows', Array.from(this._pinnedKeys));
     } catch (e) {
-      log(`window-switcher-popup: failed to save pinned windows: ${e}`);
+      log(`gnome-waypoint-switcher: failed to save pinned windows: ${e}`);
     }
   }
 
@@ -640,7 +640,8 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
     });
     const items = Array.from(counts.values())
       .sort((a, b) => b.count - a.count || a.app.localeCompare(b.app));
-    items.forEach(item => {
+    const visibleItems = this._fitAppBarItems(items);
+    visibleItems.forEach(item => {
       const btn = new St.Button({ style_class: 'winpick-appbutton', reactive: true, can_focus: true });
       const inner = new St.BoxLayout({ vertical: false, style_class: 'winpick-appbutton-inner' });
       const icon = item.icon ? item.icon.create_icon_texture(20) : new St.Icon({ icon_name: 'application-x-executable-symbolic', icon_size: 20 });
@@ -664,6 +665,18 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
     const clearBtn = new St.Button({ label: 'Clear', style_class: 'winpick-appbutton-clear', reactive: true, can_focus: true });
     clearBtn.connect('clicked', () => this._toggleFilter(null));
     this._appBar.add_child(clearBtn);
+  }
+
+  _fitAppBarItems(items) {
+    const maxItems = 16;
+    if (items.length <= maxItems)
+      return items;
+
+    const selected = items.filter(item => item.key === this._groupFilter);
+    const multiWindow = items.filter(item => item.key !== this._groupFilter && item.count > 1);
+    const singleWindow = items.filter(item => item.key !== this._groupFilter && item.count === 1);
+    const roomForSingles = Math.max(0, maxItems - selected.length - multiWindow.length);
+    return selected.concat(multiWindow, singleWindow.slice(0, roomForSingles));
   }
 
   _setupWorkspaceMonitors() {
@@ -697,7 +710,7 @@ _buildMonitorGrid(windowInfo, monitorIndex, monitor) {
   }
 }
 
-class WindowPickerExtensionLegacy {
+class GnomeWaypointSwitcherExtensionLegacy {
   constructor(settings = null) {
     this._ui = null;
     this._settings = settings;
@@ -749,10 +762,10 @@ class WindowPickerExtensionLegacy {
   }
 }
 
-export default class WindowPickerExtension extends Extension {
+export default class GnomeWaypointSwitcherExtension extends Extension {
   enable() {
     this._settings = this.getSettings();
-    this._impl = new WindowPickerExtensionLegacy(this._settings);
+    this._impl = new GnomeWaypointSwitcherExtensionLegacy(this._settings);
     // Provide path/dir to legacy instance for stylesheet resolution
     this._impl.path = this.path;
     this._impl.dir = this.dir;
@@ -768,7 +781,7 @@ export default class WindowPickerExtension extends Extension {
         () => this._impl._showPopup()
       );
     } catch (e) {
-      log(`window-switcher-popup: failed to add keybinding: ${e}`);
+      log(`gnome-waypoint-switcher: failed to add keybinding: ${e}`);
     }
   }
 

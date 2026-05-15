@@ -5,15 +5,15 @@ This extension includes a built‑in keybinding (default: `Super+Y`) and also ex
 ## Built‑in keybinding
 - Default: `Super+Y`.
 - Change via CLI:
-  - `gsettings set org.gnome.shell.extensions.window-switcher-popup show "['<Super>Y']"`
-- Or with dconf Editor at `/org/gnome/shell/extensions/window-switcher-popup/show`.
+  - `gsettings set io.github.richnetdesign.gnome-waypoint-switcher show "['<Super>Y']"`
+- Or with dconf Editor at `/io/github/richnetdesign/gnome-waypoint-switcher/show`.
 
 ## Quick setup (GUI) for a custom shortcut
 - Open `Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts`.
 - Add a new shortcut:
   - Name: `GNOME Waypoint Switcher`
   - Command:
-    - `gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show`
+    - `gdbus call --session --dest io.github.richnetdesign.GnomeWaypointSwitcher --object-path /io/github/richnetdesign/GnomeWaypointSwitcher --method io.github.richnetdesign.GnomeWaypointSwitcher.Show`
   - Shortcut: press your preferred combo. Suggested default: `Super+Y` (commonly free on stock GNOME).
 - Test: press your shortcut. You can also test from a terminal using the same command.
 
@@ -38,12 +38,12 @@ If you prefer, you can add a custom shortcut via `gsettings`.
 - Add a new binding at `custom0` (use `custom1`, `custom2`, etc. if taken):
   - `gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"`
   - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ name 'GNOME Waypoint Switcher'`
-  - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ command "gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show"`
+  - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ command "gdbus call --session --dest io.github.richnetdesign.GnomeWaypointSwitcher --object-path /io/github/richnetdesign/GnomeWaypointSwitcher --method io.github.richnetdesign.GnomeWaypointSwitcher.Show"`
   - `gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/ binding '<Super>Y'`
 
 ## Notes
 - Ensure the extension is enabled:
-  - `gnome-extensions enable window-switcher-popup@ai.richyoung.ca`
+  - `gnome-extensions enable gnome-waypoint-switcher@richnetdesign.github.io`
 - After installing/updating the extension, reload GNOME Shell:
   - Wayland and GNOME 50+: log out/in, or use the included `./dev-install.sh` during development
   - Older Xorg sessions: `Alt+F2` -> type `r` -> `Enter`

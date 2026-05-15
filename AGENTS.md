@@ -2,7 +2,7 @@
 
 ## What This Extension Does
 - **Purpose**: Provide an in-shell window switcher popup for GNOME with fuzzy matching, keyboard navigation, and inline actions (activate, close, move).
-- **Triggering**: Exposed via D-Bus (`ca.richyoung.WindowPicker / Show`). Default shortcut is `Super+Y`, configurable through GSettings (`org.gnome.shell.extensions.window-switcher-popup show`).
+- **Triggering**: Exposed via D-Bus (`io.github.richnetdesign.GnomeWaypointSwitcher / Show`). Default shortcut is `Super+Y`, configurable through GSettings (`io.github.richnetdesign.gnome-waypoint-switcher show`).
 - **UI Structure**:
   - Root popup (St.BoxLayout) with search entry and scrollable window list.
   - Rows include icon, title, inline “close” and “move” buttons.
@@ -32,7 +32,7 @@
 - **Scroll geometry**: transformed positions include stage offset; ensure fallback scroll uses stage coordinates (done).
 
 ## Debugging / Recovery Tips
-- Reload extension: `gnome-extensions disable/enable window-switcher-popup@ai.richyoung.ca` or use README D-Bus commands.
+- Reload extension: `gnome-extensions disable/enable gnome-waypoint-switcher@richnetdesign.github.io` or use README D-Bus commands.
 - If popup gets stuck: `DisableExtension` then `EnableExtension` via D-Bus (documented in README).
 - To inspect monitors: `Main.layoutManager.monitors` (objects with `x/y/width/height`).
 - Window metadata: access via `global.get_window_actors()` → `meta_window` (for app ID, workspace, etc.).

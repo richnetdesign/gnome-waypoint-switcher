@@ -18,16 +18,16 @@ Notes:
 - On older Xorg sessions, press Alt+F2, type `r`, then Enter to reload.
 
 Manual install:
-1. Copy this folder (`window-switcher-popup@ai.richyoung.ca`) to `~/.local/share/gnome-shell/extensions/`
+1. Copy this folder (`gnome-waypoint-switcher@richnetdesign.github.io`) to `~/.local/share/gnome-shell/extensions/`
 2. Enable it:
    ```
-   gnome-extensions enable window-switcher-popup@ai.richyoung.ca
+   gnome-extensions enable gnome-waypoint-switcher@richnetdesign.github.io
    ```
 
 ## Use
 Trigger the popup:
 ```
-gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show
+gdbus call --session --dest io.github.richnetdesign.GnomeWaypointSwitcher --object-path /io/github/richnetdesign/GnomeWaypointSwitcher --method io.github.richnetdesign.GnomeWaypointSwitcher.Show
 ```
 
 ### Built-in Shortcut (default: Super+Y)
@@ -35,10 +35,10 @@ The extension ships with a configurable shortcut using GSettings. Default bindin
 
 - Change it via CLI:
   ```
-  gsettings set org.gnome.shell.extensions.window-switcher-popup show "['<Super>Y']"
+  gsettings set io.github.richnetdesign.gnome-waypoint-switcher show "['<Super>Y']"
   ```
 - Or use `dconf Editor` at:
-  - `/org/gnome/shell/extensions/window-switcher-popup/show`
+  - `/io/github/richnetdesign/gnome-waypoint-switcher/show`
 
 You can also create an additional custom shortcut via Settings if you prefer.
 
@@ -47,7 +47,7 @@ Open **Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts**:
 - Name: GNOME Waypoint Switcher
 - Command:
   ```
-  gdbus call --session --dest ca.richyoung.WindowPicker --object-path /ca/richyoung/WindowPicker --method ca.richyoung.WindowPicker.Show
+  gdbus call --session --dest io.github.richnetdesign.GnomeWaypointSwitcher --object-path /io/github/richnetdesign/GnomeWaypointSwitcher --method io.github.richnetdesign.GnomeWaypointSwitcher.Show
   ```
 - Shortcut: press **Super+Y** (or any preferred free combo)
 
@@ -70,19 +70,19 @@ See `KEYBOARD_SHORTCUTS.md` for more details, alternatives, and CLI setup.
 Disable the move window popover if you only want activation and close actions:
 
 ```
-gsettings set org.gnome.shell.extensions.window-switcher-popup enable-move-popover false
+gsettings set io.github.richnetdesign.gnome-waypoint-switcher enable-move-popover false
 ```
 
 Re-enable it with:
 
 ```
-gsettings set org.gnome.shell.extensions.window-switcher-popup enable-move-popover true
+gsettings set io.github.richnetdesign.gnome-waypoint-switcher enable-move-popover true
 ```
 
 ## Implementation Notes
 - Supports GNOME Shell 45 through 50.
 - Wayland-safe: uses GNOME Shell UI and D-Bus, no external windows.
-- D-Bus name `ca.richyoung.WindowPicker` exposes `Show()` to trigger the popup.
+- D-Bus name `io.github.richnetdesign.GnomeWaypointSwitcher` exposes `Show()` to trigger the popup.
 - Follows GNOME extension best practices:
   - Stylesheet added/removed on enable/disable.
   - Signals tracked and disconnected safely on close.
@@ -97,7 +97,7 @@ gdbus call --session \
   --dest org.gnome.Shell.Extensions \
   --object-path /org/gnome/Shell/Extensions \
   --method org.gnome.Shell.Extensions.DisableExtension \
-  'window-switcher-popup@ai.richyoung.ca'
+  'gnome-waypoint-switcher@richnetdesign.github.io'
 ```
 
 Once the session is responsive again, re-enable the extension:
@@ -107,7 +107,7 @@ gdbus call --session \
   --dest org.gnome.Shell.Extensions \
   --object-path /org/gnome/Shell/Extensions \
   --method org.gnome.Shell.Extensions.EnableExtension \
-  'window-switcher-popup@ai.richyoung.ca'
+  'gnome-waypoint-switcher@richnetdesign.github.io'
 ```
 
 Both commands are safe to run repeatedly; they simply instruct GNOME Shell to
@@ -149,9 +149,9 @@ sudo mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/host-share
 From there, copy the extension across:
 
 ```
-cp -r /mnt/host-share/window-switcher-popup@ai.richyoung.ca \ 
+cp -r /mnt/host-share/gnome-waypoint-switcher@richnetdesign.github.io \ 
       ~/.local/share/gnome-shell/extensions/
-gnome-extensions enable window-switcher-popup@ai.richyoung.ca
+gnome-extensions enable gnome-waypoint-switcher@richnetdesign.github.io
 ```
 
 Reload GNOME Shell after copying: log out/in on Wayland or GNOME 50+, or use Alt+F2 -> `r` on older Xorg sessions. Update the ISO path or VM resources in the script if you need a different environment.

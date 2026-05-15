@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.window-switcher-popup" path="/org/gnome/shell/extensions/window-switcher-popup/">
+  <schema id="io.github.richnetdesign.gnome-waypoint-switcher" path="/io/github/richnetdesign/gnome-waypoint-switcher/">
     <key name="show" type="as">
       <default>['&lt;Super&gt;Y']</default>
       <summary>Shortcut(s) to open GNOME Waypoint Switcher</summary>
